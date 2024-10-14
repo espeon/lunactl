@@ -1,6 +1,8 @@
-use std::path::PathBuf;
+use std::{env, path::PathBuf};
 
 use clap::{Parser, Subcommand};
+use tracing::{error, level_filters::LevelFilter};
+use tracing_subscriber::EnvFilter;
 
 mod helpers;
 mod install;
@@ -57,8 +59,18 @@ struct UninstallOpts {
 }
 
 fn main() {
+    // Set up logs
+    let filter = EnvFilter::builder()
+        .with_default_directive(LevelFilter::INFO.into())
+        .from_env_lossy();
+
+    tracing_subscriber::fmt()
+        .event_format(tracing_subscriber::fmt::format().without_time())
+        .with_env_filter(filter)
+        .init();
+
     if let Err(e) = run() {
-        eprintln!("Error: {e}");
+        error!("{e}");
         std::process::exit(1);
     }
 }

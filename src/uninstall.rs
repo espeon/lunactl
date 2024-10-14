@@ -1,4 +1,5 @@
 use anyhow::{bail, Result};
+use tracing::{error, info, warn};
 use std::path::{Path, PathBuf};
 
 use crate::helpers::get_install_path;
@@ -14,10 +15,10 @@ impl Uninstaller {
         // check if paths exist
         let install_path = if let Some(install_path) = opts.install_path {
             if !install_path.exists() {
-                anyhow::bail!("Install path does not exist");
+                anyhow::bail!("install path does not exist");
             }
             if !install_path.is_dir() {
-                anyhow::bail!("Install path is not a directory");
+                anyhow::bail!("install path is not a directory");
             }
             install_path
         } else {
@@ -30,7 +31,7 @@ impl Uninstaller {
     }
 
     pub fn init(&self) -> Result<()> {
-        println!("Uninstalling neptune...");
+        info!("uninstalling neptune...");
         self.uninstall()?;
         Ok(())
     }
@@ -49,30 +50,30 @@ impl Uninstaller {
         // Check if Neptune is installed
         if !app_path.exists() || !original_asar_path.exists() {
             if self.force {
-                println!(
-                    "Neptune doesn't seem to be installed, but force flag is set. Continuing..."
+                warn!(
+                    "neptune doesn't seem to be installed, but force flag is set. continuing..."
                 );
             } else {
-                anyhow::bail!("Neptune doesn't seem to be installed. Use --force to override.");
+                anyhow::bail!("neptune doesn't seem to be installed. Use --force to override.");
             }
         }
 
         // Remove the injector directory
-        println!("Removing Neptune app directory: {}", app_path.display());
+        debug!("Removing Neptune app directory: {}", app_path.display());
         if app_path.exists() {
             std::fs::remove_dir_all(&app_path)?;
         }
 
         // Restore the original app.asar
-        println!("Restoring original app.asar");
+        debug!("Restoring original app.asar");
         if original_asar_path.exists() {
             std::fs::rename(&original_asar_path, &app_asar_path)?;
         } else {
-            println!("Warning: original.asar not found. Unable to restore original app.asar!");
-            bail!("You may need to reinstall Tidal!")
+            error!("original.asar not found. unable to restore original app.asar!");
+            bail!("Could not restore original app.asar");
         }
 
-        println!("Neptune has been uninstalled successfully.");
+        info!("neptune has been uninstalled successfully.");
 
         Ok(())
     }
