@@ -3,7 +3,7 @@ use ripunzip::{NullProgressReporter, UnzipEngine, UnzipOptions, UnzipProgressRep
 use std::iter::repeat_with;
 use std::path::{Path, PathBuf};
 
-use crate::helpers::get_install_path;
+use crate::helpers::{get_install_path, join_path};
 use crate::InstallOpts;
 
 pub struct Installer {
@@ -86,16 +86,10 @@ impl Installer {
         Ok(())
     }
 
-    fn join_path<P: AsRef<Path>>(&self, base: P, component: &str) -> PathBuf {
-        let mut path = base.as_ref().to_path_buf();
-        path.push(component);
-        path
-    }
-
     fn install(&self, tempdir: &Path) -> Result<()> {
-        let injector_path = self.join_path(tempdir, "neptune-master/injector");
+        let injector_path = join_path(tempdir, "neptune-master/injector");
         println!("Got install path: {}", self.install_path.display());
-        let app_path = self.join_path(&self.install_path, "app");
+        let app_path = join_path(&self.install_path, "app");
         println!("Moving injector to install path: {}", app_path.display());
         if self.force {
             println!("Removing old neptune app directory");
@@ -104,8 +98,8 @@ impl Installer {
         std::fs::rename(injector_path, app_path)
             .map_err(|e| anyhow::anyhow!("Failed to move injector: {}", e))?;
 
-        let app_asar_path = self.join_path(&self.install_path, "app.asar");
-        let original_asar_path = self.join_path(&self.install_path, "original.asar");
+        let app_asar_path = join_path(&self.install_path, "app.asar");
+        let original_asar_path = join_path(&self.install_path, "original.asar");
         println!(
             "Moving app.asar to original.asar: {}",
             original_asar_path.display()
