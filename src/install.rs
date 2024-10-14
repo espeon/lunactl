@@ -1,15 +1,17 @@
 use anyhow::Result;
-use ripunzip::{NullProgressReporter, UnzipEngine, UnzipOptions, UnzipProgressReporter};
+use ripunzip::{UnzipEngine, UnzipOptions, UnzipProgressReporter};
 use std::iter::repeat_with;
 use std::path::{Path, PathBuf};
+use tracing::{debug, error, info, warn};
 
-use crate::helpers::{get_install_path, join_path};
+use crate::helpers::{get_install_path, join_path, ProgressDisplayer};
 use crate::InstallOpts;
 
 pub struct Installer {
     temp_dir: PathBuf,
     install_path: PathBuf,
     force: bool,
+    finished_installing: bool
 }
 
 impl Installer {
@@ -30,19 +32,20 @@ impl Installer {
             temp_dir: std::env::temp_dir(),
             install_path,
             force: opts.force.unwrap_or(false),
+            finished_installing: false
         })
     }
 
-    pub fn init(&self) -> Result<()> {
-        println!("Downloading neptune...");
+    pub fn init(&mut self) -> Result<()> {
+        info!("downloading neptune");
         let path = self.download_and_extract()?;
-        println!("Installing neptune...");
+        info!("installing neptune");
         self.install(&path)?;
         Ok(())
     }
 
     fn report_on_insufficient_readahead_size() {
-        eprintln!("Warning: this operation required several HTTP(S) streams.\nThis can slow down decompression.");
+        warn!("Warning: this operation required several HTTP(S) streams.\nThis can slow down decompression.");
     }
 
     fn download_and_extract(&self) -> Result<PathBuf> {
@@ -50,7 +53,7 @@ impl Installer {
         let file_name = format!("neptune-master-temp_{random_string}");
         let path = self.temp_dir.join(file_name);
 
-        println!("Downloading to {}", path.display());
+        debug!("Downloading to {}", path.display());
 
         let engine = UnzipEngine::for_uri(
             "https://github.com/uwu/neptune/archive/refs/heads/master.zip",
@@ -59,9 +62,8 @@ impl Installer {
         )
         .map_err(|e| anyhow::anyhow!("Failed to create UnzipEngine: {e}"))?;
 
-        // TODO: use a progress bar
         let progress_reporter: Box<dyn UnzipProgressReporter + Sync> =
-            Box::new(NullProgressReporter);
+            Box::new(ProgressDisplayer::new());
 
         let opts: UnzipOptions = UnzipOptions {
             output_directory: Some(path.clone()),
@@ -73,26 +75,33 @@ impl Installer {
 
         engine
             .unzip(opts)
-            .map_err(|e| anyhow::anyhow!("Failed to unzip: {e}"))?;
+            .map_err(|e| anyhow::anyhow!("failed to unzip: {e}"))?;
 
         Ok(path)
     }
 
     fn cleanup(&mut self) -> Result<()> {
-        println!("Cleaning up...");
+        info!("cleaning up...");
         if self.temp_dir.exists() {
-            std::fs::remove_dir_all(&self.temp_dir)?;
+            match std::fs::remove_dir_all(&self.temp_dir) {
+                Ok(_) => {
+                    debug!("cleaned up temp dir");
+                }
+                Err(e) => {
+                    warn!("Failed to remove temp dir at {} (os error {:?}). You may want to clean it up manually.", self.temp_dir.display(), e.raw_os_error().unwrap_or(0));
+                }
+            }
         }
         Ok(())
     }
 
-    fn install(&self, tempdir: &Path) -> Result<()> {
+    fn install(&mut self, tempdir: &Path) -> Result<()> {
         let injector_path = join_path(tempdir, "neptune-master/injector");
-        println!("Got install path: {}", self.install_path.display());
+        debug!("got install path: {}", self.install_path.display());
         let app_path = join_path(&self.install_path, "app");
-        println!("Moving injector to install path: {}", app_path.display());
+        debug!("moving injector to install path: {}", app_path.display());
         if self.force {
-            println!("Removing old neptune app directory");
+            warn!("removing old neptune app directory!");
             std::fs::remove_dir_all(&app_path)?;
         }
         std::fs::rename(injector_path, app_path)
@@ -100,20 +109,33 @@ impl Installer {
 
         let app_asar_path = join_path(&self.install_path, "app.asar");
         let original_asar_path = join_path(&self.install_path, "original.asar");
-        println!(
-            "Moving app.asar to original.asar: {}",
-            original_asar_path.display()
-        );
-        std::fs::rename(app_asar_path, original_asar_path)?;
+        // does original.asar already exist?
+        if !original_asar_path.exists() {
+            debug!(
+                "moving app.asar to original.asar: {}",
+                original_asar_path.display()
+            );
+            std::fs::rename(app_asar_path, original_asar_path)?;
+        } else {
+            debug!(
+                "app.asar already exists at {}",
+                original_asar_path.display()
+            );
+        }
 
+        // Set finished installing for drop method
+        self.finished_installing = true;
         Ok(())
     }
 }
 
 impl Drop for Installer {
     fn drop(&mut self) {
+        if !self.finished_installing{
+            warn!("encountered an error, so cleaning up!");
+        }
         if let Err(e) = self.cleanup() {
-            eprintln!("Error during cleanup: {}", e);
+            error!("error during cleanup: {}", e);
         }
     }
 }
