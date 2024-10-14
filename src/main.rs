@@ -1,4 +1,4 @@
-use std::{env, path::PathBuf};
+use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 use tracing::{error, level_filters::LevelFilter};

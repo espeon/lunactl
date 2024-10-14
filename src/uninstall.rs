@@ -1,5 +1,5 @@
 use anyhow::{bail, Result};
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 use std::path::{Path, PathBuf};
 
 use crate::helpers::get_install_path;

@@ -129,6 +129,17 @@ impl Installer {
     }
 }
 
+impl Default for Installer {
+    fn default() -> Self {
+        Self {
+            temp_dir: std::env::temp_dir(),
+            install_path: PathBuf::new(),
+            force: false,
+            finished_installing: false
+        }
+    }
+}
+
 impl Drop for Installer {
     fn drop(&mut self) {
         if !self.finished_installing{
@@ -173,6 +184,7 @@ mod tests {
             temp_dir: temp_dir.path().to_path_buf(),
             install_path: PathBuf::new(),
             force: false,
+            ..Default::default()
         };
 
         let result = installer.download_and_extract();
@@ -197,6 +209,7 @@ mod tests {
             temp_dir: temp_dir.path().to_path_buf(),
             install_path: PathBuf::new(),
             force: false,
+            ..Default::default()
         };
 
         assert!(installer.cleanup().is_ok());
@@ -218,10 +231,11 @@ mod tests {
         let app_asar = install_dir.path().join("app.asar");
         File::create(&app_asar).unwrap();
 
-        let installer = Installer {
+        let mut installer = Installer {
             temp_dir: temp_dir.path().to_path_buf(),
             install_path: install_dir.path().to_path_buf(),
             force: false,
+            ..Default::default()
         };
 
         assert!(installer.install(temp_dir.path()).is_ok());
@@ -253,10 +267,11 @@ mod tests {
         let app_asar = install_dir.path().join("app.asar");
         File::create(&app_asar).unwrap();
 
-        let installer = Installer {
+        let mut installer = Installer {
             temp_dir: temp_dir.path().to_path_buf(),
             install_path: install_dir.path().to_path_buf(),
             force: true,
+            ..Default::default()
         };
 
         assert!(installer.install(temp_dir.path()).is_ok());
