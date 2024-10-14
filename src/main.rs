@@ -34,7 +34,7 @@ struct InstallOpts {
 
     #[clap(
         long,
-        default_value = "false",
+        default_value = None,
         help = "The installation directory where app.asar or original.asar is found."
     )]
     install_path: Option<PathBuf>,
@@ -50,7 +50,7 @@ struct UninstallOpts {
     force: Option<bool>,
     #[clap(
         long,
-        default_value = "false",
+        default_value = None,
         help = "The installation directory where app.asar or original.asar is found."
     )]
     install_path: Option<PathBuf>,

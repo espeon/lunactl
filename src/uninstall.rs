@@ -12,16 +12,19 @@ pub struct Uninstaller {
 impl Uninstaller {
     pub fn new(opts: UninstallOpts) -> Result<Self> {
         // check if paths exist
-        if let Some(install_path) = opts.install_path {
+        let install_path = if let Some(install_path) = opts.install_path {
             if !install_path.exists() {
                 anyhow::bail!("Install path does not exist");
             }
             if !install_path.is_dir() {
                 anyhow::bail!("Install path is not a directory");
             }
-        }
+            install_path
+        } else {
+            get_install_path()?
+        };
         Ok(Self {
-            install_path: get_install_path()?,
+            install_path,
             force: opts.force.unwrap_or(false),
         })
     }

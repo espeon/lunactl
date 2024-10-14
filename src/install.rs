@@ -14,17 +14,21 @@ pub struct Installer {
 
 impl Installer {
     pub fn new(opts: InstallOpts) -> Result<Self> {
-        if let Some(install_path) = opts.install_path {
+        let install_path = if let Some(install_path) = opts.install_path {
+            dbg!(&install_path);
             if !install_path.exists() {
                 anyhow::bail!("Install path does not exist");
             }
             if !install_path.is_dir() {
                 anyhow::bail!("Install path is not a directory");
             }
-        }
+            install_path
+        } else {
+            get_install_path()?
+        };
         Ok(Self {
             temp_dir: std::env::temp_dir(),
-            install_path: get_install_path()?,
+            install_path,
             force: opts.force.unwrap_or(false),
         })
     }
