@@ -2,7 +2,7 @@
 
 A CLI tool to manage [Neptune](https://github.com/uwu/neptune) on your system. Not affiliated.
 
-> [!ERROR] 
+> [!WARNING] 
 > This tool has not been tested on Windows.
 
 > [!CAUTION] 
