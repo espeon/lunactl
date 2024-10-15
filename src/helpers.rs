@@ -1,4 +1,5 @@
 use std::fmt::Write;
+use std::{env, fs};
 use std::path::{Path, PathBuf};
 
 pub fn get_install_path() -> anyhow::Result<std::path::PathBuf> {
@@ -38,7 +39,7 @@ pub fn get_install_path() -> anyhow::Result<std::path::PathBuf> {
             }
         }
 
-        join_path(tidal_directory, &current_app_dir, "resources")
+        join_path(join_path(tidal_directory, &current_app_dir), "resources")
     });
 
     #[cfg(target_os = "linux")]

@@ -11,7 +11,7 @@ pub struct Installer {
     temp_dir: PathBuf,
     install_path: PathBuf,
     force: bool,
-    finished_installing: bool
+    finished_installing: bool,
 }
 
 impl Installer {
@@ -32,7 +32,7 @@ impl Installer {
             temp_dir: std::env::temp_dir(),
             install_path,
             force: opts.force.unwrap_or(false),
-            finished_installing: false
+            finished_installing: false,
         })
     }
 
@@ -100,15 +100,35 @@ impl Installer {
         debug!("got install path: {}", self.install_path.display());
         let app_path = join_path(&self.install_path, "app");
         debug!("moving injector to install path: {}", app_path.display());
+        let app_asar_path = join_path(&self.install_path, "app.asar");
+        let original_asar_path = join_path(&self.install_path, "original.asar");
         if self.force {
             warn!("removing old neptune app directory!");
             std::fs::remove_dir_all(&app_path)?;
+        } else {
+            // check if app.asar is moved
+            debug!("checking if app.asar is moved: {}", app_asar_path.display());
+            if !original_asar_path.exists() {
+                debug!(
+                    "moving app.asar to original.asar: {}",
+                    original_asar_path.display()
+                );
+                std::fs::rename(&app_asar_path, &original_asar_path)?;
+            } else {
+                debug!(
+                    "app.asar already exists at {}",
+                    original_asar_path.display()
+                );
+            }
+            // Check if Neptune is already installed
+            if app_path.exists() {
+                anyhow::bail!("neptune is already installed. Use --force to override.");
+            }
         }
+
         std::fs::rename(injector_path, app_path)
             .map_err(|e| anyhow::anyhow!("Failed to move injector: {}", e))?;
 
-        let app_asar_path = join_path(&self.install_path, "app.asar");
-        let original_asar_path = join_path(&self.install_path, "original.asar");
         // does original.asar already exist?
         if !original_asar_path.exists() {
             debug!(
@@ -135,14 +155,14 @@ impl Default for Installer {
             temp_dir: std::env::temp_dir(),
             install_path: PathBuf::new(),
             force: false,
-            finished_installing: false
+            finished_installing: false,
         }
     }
 }
 
 impl Drop for Installer {
     fn drop(&mut self) {
-        if !self.finished_installing{
+        if !self.finished_installing {
             warn!("encountered an error, so cleaning up!");
         }
         if let Err(e) = self.cleanup() {

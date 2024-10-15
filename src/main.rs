@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
-use tracing::{error, level_filters::LevelFilter};
+use tracing::{error, info, level_filters::LevelFilter};
 use tracing_subscriber::EnvFilter;
 
 mod helpers;
@@ -78,9 +78,20 @@ fn main() {
 fn run() -> anyhow::Result<()> {
     let args = Args::parse();
 
+    #[cfg(target_os = "windows")]
+    {
+        info!("If you have a fresh install of TIDAL, you may need to wait for Defender to finish scanning the app files.");
+        info!("After scanning finishes, you can force install by running `neptune install --force`");
+    }
+
+
     match args.command {
         Commands::Install(opts) => install::Installer::new(opts)?.init(),
         Commands::Uninstall(opts) => uninstall::Uninstaller::new(opts)?.init(),
+        _ => {
+            println!("You may want to specify a command.");
+            Ok(())
+        },
     }?;
 
     Ok(())
