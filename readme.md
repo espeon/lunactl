@@ -9,6 +9,13 @@ A CLI tool to manage [Neptune](https://github.com/uwu/neptune) on your system. N
 ### ~~Download a binary~~
 ~~Download from GitHub Releases: [neptunectl](https://github.com/espeon/neptunectl/releases/)~~
 
+> [!INFO] 
+> On MacOS, if you download neptunectl from the internet, you may need to run the following command to allow Neptune to be run:
+> ```bash
+> xattr -r -d com.apple.quarantine ./neptunectl
+> ```
+> See https://support.apple.com/en-us/102445 for more.
+
 ### Install via cargo
 `cargo install --git https://github.com/espeon/neptunectl`
 
