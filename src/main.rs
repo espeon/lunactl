@@ -7,6 +7,7 @@ use tracing_subscriber::EnvFilter;
 mod helpers;
 mod install;
 mod uninstall;
+mod progress;
 
 /// A CLI tool to manage Neptune on your system
 #[derive(Parser, Debug)]
