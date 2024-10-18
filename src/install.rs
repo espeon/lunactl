@@ -4,9 +4,8 @@ use std::iter::repeat_with;
 use std::path::{Path, PathBuf};
 use tracing::{debug, error, info, warn};
 
-
-use crate::progress::ProgressDisplayer;
 use crate::helpers::{get_install_path, join_path};
+use crate::progress::ProgressDisplayer;
 use crate::InstallOpts;
 
 pub struct Installer {
@@ -87,7 +86,11 @@ impl Installer {
                     debug!("cleaned up temp dir");
                 }
                 Err(e) => {
-                    warn!("Failed to remove temp dir at {} {}. You may want to clean it up manually.", self.temp_dir.display(), e);
+                    warn!(
+                        "Failed to remove temp dir at {} {}. You may want to clean it up manually.",
+                        self.temp_dir.display(),
+                        e
+                    );
                 }
             }
         }

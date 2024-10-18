@@ -6,8 +6,8 @@ use tracing_subscriber::EnvFilter;
 
 mod helpers;
 mod install;
-mod uninstall;
 mod progress;
+mod uninstall;
 
 /// A CLI tool to manage Neptune on your system
 #[derive(Parser, Debug)]
@@ -84,13 +84,14 @@ fn run() -> anyhow::Result<()> {
     #[cfg(target_os = "windows")]
     {
         info!("If you have a fresh install of TIDAL, you may need to wait for Defender to finish scanning the app files.");
-        info!("After scanning finishes, you can force install by running `neptune install --force`");
+        info!(
+            "After scanning finishes, you can force install by running `neptune install --force`"
+        );
     }
-
 
     match args.command {
         Commands::Install(opts) => install::Installer::new(opts)?.init(),
-        Commands::Uninstall(opts) => uninstall::Uninstaller::new(opts)?.init()
+        Commands::Uninstall(opts) => uninstall::Uninstaller::new(opts)?.init(),
     }?;
 
     Ok(())

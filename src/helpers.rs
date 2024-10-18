@@ -1,5 +1,5 @@
-use std::{env, fs};
 use std::path::{Path, PathBuf};
+use std::{env, fs};
 
 pub fn get_install_path() -> anyhow::Result<std::path::PathBuf> {
     // on macos its /Applications/TIDAL.app/Contents/Resources
@@ -53,4 +53,3 @@ pub fn join_path<P: AsRef<Path>>(base: P, component: &str) -> PathBuf {
     path.push(component);
     path
 }
-

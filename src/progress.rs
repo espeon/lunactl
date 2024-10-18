@@ -6,7 +6,6 @@ use std::fmt::Write;
 use indicatif::{ProgressBar, ProgressState, ProgressStyle};
 use ripunzip::UnzipProgressReporter;
 
-
 pub struct ProgressDisplayer(ProgressBar);
 
 impl ProgressDisplayer {
