@@ -87,7 +87,7 @@ impl Installer {
                     debug!("cleaned up temp dir");
                 }
                 Err(e) => {
-                    warn!("Failed to remove temp dir at {} (os error {:?}). You may want to clean it up manually.", self.temp_dir.display(), e.raw_os_error().unwrap_or(0));
+                    warn!("Failed to remove temp dir at {} {}. You may want to clean it up manually.", self.temp_dir.display(), e);
                 }
             }
         }
