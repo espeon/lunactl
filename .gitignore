@@ -1,5 +1,2 @@
 # Build artifacts
 /target
-
-# VSCode client config
-.vscode/
