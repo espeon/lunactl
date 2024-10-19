@@ -1,8 +1,9 @@
 use anyhow::{bail, Result};
 use std::{env, fs, path::PathBuf};
-use tracing::{debug, warn};
+use tracing::{debug, info, warn};
 
 use tempfile::TempDir;
+use which::which;
 
 pub struct NeptuneInstall {
     pub temp_path: PathBuf,
@@ -41,6 +42,7 @@ impl NeptuneInstall {
         } else {
             get_install_path()?
         };
+        info!("Using install path: {}", install_path.display());
         Ok(Self {
             temp_path: TempDir::new()?.into_path(),
             install_path: install_path.clone(),
@@ -100,45 +102,63 @@ fn find_latest_version(tidal_directory: &PathBuf) -> Result<Option<PathBuf>> {
     Ok(current_app_dir)
 }
 
-fn get_install_path() -> anyhow::Result<std::path::PathBuf> {
-    // on macos its /Applications/TIDAL.app/Contents/Resources
+fn get_install_path() -> Result<PathBuf> {
+    let tidal_directory: Option<PathBuf> = match which("tidal") {
+        Ok(path) => {
+            info!("Found Tidal binary at: {:?}", path);
+            path.parent().map(|p| p.to_path_buf())
+        }
+        Err(e) => {
+            warn!(
+                "Tidal binary not found in PATH, attempting to fallback on hardcoded paths! {}",
+                e
+            );
+            None
+        }
+    };
+
     #[cfg(target_os = "macos")]
-    return Ok(std::path::PathBuf::from(
-        "/Applications/TIDAL.app/Contents/Resources",
-    ));
+    if tidal_directory.is_none() {
+        Ok(PathBuf::from("/Applications/TIDAL.app/Contents/Resources"));
+    } else {
+        Ok(PathBuf::from(format!(
+            "{}/Contents/Resources",
+            tidal_directory.display()
+        )));
+    }
+
+    if tidal_directory.is_none() {
+        #[cfg(target_os = "linux")]
+        bail!("Linux hardcoded tidal paths arent defined. Please specify your Tidal installation path and consider opening a issue on GitHub.");
+        bail!("OS not supported! Please specify your Tidal installation path and consider opening a issue on GitHub.");
+    }
 
     // on windows, it's localappdata/TIDAL
     #[cfg(target_os = "windows")]
     return Ok({
-        let tidal_directory = {
-            match env::var("localappdata") {
+        let install_dir = match tidal_directory {
+            Some(tidal_directory) => tidal_directory,
+            None => match env::var("localappdata") {
                 Ok(localappdata) => PathBuf::from(localappdata).join("TIDAL"),
                 Err(e) => {
                     bail!("Cannot find Tidal directory: {}", e);
                 }
-            }
+            },
         };
-
-        let latest_app_dir = match find_latest_version(&tidal_directory) {
+        let latest_app_dir = match find_latest_version(&install_dir) {
             Ok(Some(app_dir)) => app_dir,
-            Ok(None) => bail!("Cannot find app directory in {}", tidal_directory.display()),
+            Ok(None) => bail!("Cannot find app directory in {}", install_dir.display()),
             Err(e) => {
                 bail!(
                     "Error finding latest app directory in {}: {}",
-                    tidal_directory.display(),
+                    install_dir.display(),
                     e
                 )
             }
         };
 
-        tidal_directory.join(latest_app_dir).join("resources")
+        install_dir.join(latest_app_dir).join("resources")
     });
-
-    #[cfg(target_os = "linux")]
-    todo!("Linux installation not implemented! If you need Linux support, please open an issue on GitHub! (sorry :* )");
-
-    #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
-    todo!("OS not supported! Please open an issue on GitHub!");
 }
 
 #[cfg(test)]
