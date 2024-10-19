@@ -1,19 +1,35 @@
 use anyhow::{bail, Result};
 use std::{env, fs, path::PathBuf};
-use tracing::warn;
+use tracing::{debug, warn};
 
-use crate::MainOpts;
 use tempfile::TempDir;
 
 pub struct NeptuneInstall {
-    pub temp_dir: PathBuf,
+    pub temp_path: PathBuf,
     pub install_path: PathBuf,
     pub app_path: PathBuf,
+    pub app_asar_path: PathBuf,
+    pub orig_asar_path: PathBuf,
+    is_mock: bool,
+}
+
+impl Drop for NeptuneInstall {
+    fn drop(&mut self) {
+        debug!("cleanup removing temp_path: {}", self.temp_path.display());
+        fs::remove_dir_all(&self.temp_path).unwrap();
+        if self.is_mock {
+            debug!(
+                "cleanup mock removing install_path: {}",
+                self.install_path.display()
+            );
+            fs::remove_dir_all(&self.install_path).unwrap();
+        }
+    }
 }
 
 impl NeptuneInstall {
-    pub fn new(opts: MainOpts) -> Result<Self> {
-        let install_path = if let Some(install_path) = opts.install_path {
+    pub fn new(install_path: Option<PathBuf>) -> Result<Self> {
+        let install_path = if let Some(install_path) = install_path {
             dbg!(&install_path);
             if !install_path.exists() {
                 anyhow::bail!("Install path does not exist");
@@ -26,9 +42,24 @@ impl NeptuneInstall {
             get_install_path()?
         };
         Ok(Self {
-            temp_dir: TempDir::new().unwrap().into_path(),
-            install_path,
+            temp_path: TempDir::new()?.into_path(),
+            install_path: install_path.clone(),
             app_path: install_path.join("app"),
+            app_asar_path: install_path.join("app.asar"),
+            orig_asar_path: install_path.join("original.asar"),
+            is_mock: false,
+        })
+    }
+    // This is used in tests
+    pub fn mock() -> Result<Self> {
+        let install_path = TempDir::new()?.into_path();
+        Ok(Self {
+            temp_path: TempDir::new()?.into_path(),
+            install_path: install_path.clone(),
+            app_path: install_path.join("app"),
+            app_asar_path: install_path.join("app.asar"),
+            orig_asar_path: install_path.join("original.asar"),
+            is_mock: true,
         })
     }
 }
@@ -37,6 +68,8 @@ fn find_latest_version(tidal_directory: &PathBuf) -> Result<Option<PathBuf>> {
     let mut current_parsed_version = 0;
     let mut current_app_dir: Option<PathBuf> = None;
 
+    // From original neptune installer
+    // https://github.com/uwu/neptune-installer/blob/61763c8143d7c00cc17f24e7e730b04ea679306a/src/neptune_installer.nim#L24-L37
     if let Ok(entries) = fs::read_dir(tidal_directory) {
         for entry in entries.filter_map(Result::ok) {
             let path = entry.path();
@@ -76,10 +109,6 @@ fn get_install_path() -> anyhow::Result<std::path::PathBuf> {
     // on windows, it's localappdata/TIDAL
     #[cfg(target_os = "windows")]
     return Ok({
-        // From original neptune installer
-        // https://github.com/uwu/neptune-installer/blob/61763c8143d7c00cc17f24e7e730b04ea679306a/src/neptune_installer.nim#L24-L37
-        let mut current_app_dir = String::new();
-        let mut current_parsed_version = 0;
         let tidal_directory = {
             match env::var("localappdata") {
                 Ok(localappdata) => PathBuf::from(localappdata).join("TIDAL"),
@@ -109,4 +138,40 @@ fn get_install_path() -> anyhow::Result<std::path::PathBuf> {
 
     #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
     todo!("OS not supported! Please open an issue on GitHub!");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_neptune_install_new() -> Result<()> {
+        let neptune = NeptuneInstall::mock()?;
+        assert!(neptune.install_path.exists());
+        assert!(neptune.temp_path.exists());
+        Ok(())
+    }
+
+    #[test]
+    fn test_neptune_install_invalid_path() {
+        assert!(NeptuneInstall::new(Some(PathBuf::from("/nonexistent/path"))).is_err());
+    }
+
+    #[test]
+    fn test_neptune_install_cleanup() -> Result<()> {
+        let neptune = NeptuneInstall::mock()?;
+
+        // Make a copy of the temp_dir path
+        let temp_dir = neptune.temp_path.clone();
+        let install_path = neptune.install_path.clone();
+
+        // Explicitly drop the temp paths to ensure cleanup is tested
+        drop(neptune);
+
+        // Check if the temp dirs are cleaned up (mock uses TempDir for install_path)
+        assert!(!temp_dir.exists());
+        assert!(!install_path.exists());
+
+        Ok(())
+    }
 }

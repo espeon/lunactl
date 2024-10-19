@@ -1,15 +1,18 @@
 use std::path::PathBuf;
 
+use base::NeptuneInstall;
 use clap::{Parser, Subcommand};
 use tracing::{error, info, level_filters::LevelFilter};
 use tracing_subscriber::EnvFilter;
 
-mod helpers;
 mod progress;
 
 mod base;
 mod install;
 mod uninstall;
+
+use crate::install::install;
+use crate::uninstall::uninstall;
 
 /// A CLI tool to manage Neptune on your system
 #[derive(Parser, Debug)]
@@ -35,7 +38,7 @@ struct MainOpts {
         action = clap::ArgAction::SetTrue, // Sets `force` to Some(true) when provided
         help = "Force regardless of if Neptune is installed/uninstalled"
     )]
-    force: Option<bool>,
+    force: bool,
 
     #[clap(
         long,
@@ -74,8 +77,10 @@ fn run() -> anyhow::Result<()> {
     }
 
     match args.command {
-        Commands::Install(opts) => install::Installer::new(opts)?.init(),
-        Commands::Uninstall(opts) => uninstall::Uninstaller::new(opts)?.init(),
+        Commands::Install(opts) => install(&NeptuneInstall::new(opts.install_path)?, opts.force),
+        Commands::Uninstall(opts) => {
+            uninstall(&NeptuneInstall::new(opts.install_path)?, opts.force)
+        }
     }?;
 
     Ok(())

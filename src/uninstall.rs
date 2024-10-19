@@ -1,165 +1,102 @@
 use anyhow::{bail, Result};
-use std::path::PathBuf;
 use tracing::{debug, error, info, warn};
 
-use crate::helpers::{get_install_path, join_path};
-use crate::MainOpts;
+use crate::base::NeptuneInstall;
 
-pub struct Uninstaller {
-    install_path: PathBuf,
-    force: bool,
-}
+pub fn uninstall(neptune: &NeptuneInstall, force: bool) -> Result<()> {
+    info!("uninstalling Neptune...");
 
-impl Uninstaller {
-    pub fn new(opts: MainOpts) -> Result<Self> {
-        // check if paths exist
-        let install_path = if let Some(install_path) = opts.install_path {
-            if !install_path.exists() {
-                anyhow::bail!("install path does not exist");
-            }
-            if !install_path.is_dir() {
-                anyhow::bail!("install path is not a directory");
-            }
-            install_path
-        } else {
-            get_install_path()?
-        };
-        Ok(Self {
-            install_path,
-            force: opts.force.unwrap_or(false),
-        })
+    let app_exists = neptune.app_path.exists();
+    let original_asar_exists = neptune.orig_asar_path.exists();
+
+    // Check if Neptune is installed
+    if force {
+        if !app_exists {
+            warn!(
+                "Neptune app path {:?} doesnt exist! Flag --force is set continuing...",
+                neptune.app_path.display()
+            );
+        }
+        if !original_asar_exists {
+            warn!(
+                "Original Neptune app.asar file {:?} doesnt exist! --force is set continuing...",
+                neptune.orig_asar_path.display()
+            );
+        }
+    } else {
+        if !app_exists {
+            anyhow::bail!(
+                "Neptune app path {:?} doesnt exist! Use --force to override.",
+                neptune.app_path.display()
+            );
+        }
+        if !original_asar_exists {
+            anyhow::bail!(
+                "Original Neptune app.asar file {:?} doesnt exist! Use --force to override. !!WARNING!! this may require you to reinstall Tidal.", 
+                neptune.orig_asar_path.display()
+            );
+        }
     }
 
-    pub fn init(&self) -> Result<()> {
-        info!("uninstalling Neptune...");
-        self.uninstall()?;
-        Ok(())
+    // Remove the injector directory
+    if neptune.app_path.exists() {
+        debug!(
+            "Removing Neptune app directory: {}",
+            neptune.app_path.display()
+        );
+        std::fs::remove_dir_all(&neptune.app_path)?;
     }
 
-    fn uninstall(&self) -> Result<()> {
-        let app_path = join_path(&self.install_path, "app");
-        let app_asar_path = join_path(&self.install_path, "app.asar");
-        let original_asar_path = join_path(&self.install_path, "original.asar");
-
-        let app_exists = app_path.exists();
-        let original_asar_exists = original_asar_path.exists();
-
-        // Check if Neptune is installed
-        if self.force {
-            if !app_exists {
-                warn!(
-                    "Neptune app path {:?} doesnt exist! Flag --force is set continuing...",
-                    app_path.display()
-                );
-            }
-            if !original_asar_exists {
-                warn!("Original Neptune app.asar file {:?} doesnt exist! --force is set continuing...", original_asar_path.display());
-            }
-        } else {
-            if !app_exists {
-                anyhow::bail!(
-                    "Neptune app path {:?} doesnt exist! Use --force to override.",
-                    app_path.display()
-                );
-            }
-            if !original_asar_exists {
-                anyhow::bail!("Original Neptune app.asar file {:?} doesnt exist! Use --force to override. !!WARNING!! this may require you to reinstall Tidal.", original_asar_path.display());
-            }
-        }
-
-        // Remove the injector directory
-        if app_path.exists() {
-            debug!("Removing Neptune app directory: {}", app_path.display());
-            std::fs::remove_dir_all(&app_path)?;
-        }
-
-        // Restore the original app.asar
-        debug!("Restoring original app.asar");
-        if original_asar_path.exists() {
-            std::fs::rename(&original_asar_path, &app_asar_path)?;
-        } else {
-            error!("original.asar not found. unable to restore original app.asar!");
-            bail!("Could not restore original app.asar, you may need to reinstall Tidal...");
-        }
-
-        info!("Neptune has been uninstalled successfully.");
-
-        Ok(())
+    // Restore the original app.asar
+    debug!("Restoring original app.asar");
+    if neptune.orig_asar_path.exists() {
+        std::fs::rename(&neptune.orig_asar_path, &neptune.app_asar_path)?;
+    } else {
+        error!("original.asar not found. unable to restore original app.asar!");
+        bail!("Could not restore original app.asar, you may need to reinstall Tidal...");
     }
+
+    info!("Neptune has been uninstalled successfully.");
+
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::fs::{self, File};
-    use tempfile::TempDir;
 
     #[test]
-    fn test_uninstaller_new() {
-        let opts = MainOpts {
-            install_path: None,
-            force: Some(true),
-        };
-        let installer = Uninstaller::new(opts).unwrap();
-        assert!(installer.force);
-        assert!(installer.install_path.exists());
-    }
+    fn test_uninstall() -> Result<()> {
+        let neptune = NeptuneInstall::mock()?;
 
-    #[test]
-    fn test_uninstaller_new_with_invalid_path() {
-        let opts = MainOpts {
-            install_path: Some(PathBuf::from("/nonexistent/path")),
-            force: None,
-        };
-        assert!(Uninstaller::new(opts).is_err());
-    }
+        fs::create_dir(&neptune.app_path)?;
+        File::create(&neptune.orig_asar_path)?;
 
-    #[test]
-    fn test_uninstall() {
-        let install_dir = TempDir::new().unwrap();
-
-        // Create a mock Neptune install dir structure
-        let neptune_dir = install_dir.path().join("app");
-        fs::create_dir(&neptune_dir).unwrap();
-
-        // Create a mock app.asar file
-        let app_asar = install_dir.path().join("original.asar");
-        File::create(&app_asar).unwrap();
-
-        let installer = Uninstaller {
-            install_path: install_dir.path().to_path_buf(),
-            force: false,
-        };
-
-        assert!(installer.uninstall().is_ok());
+        assert!(uninstall(&neptune, false).is_ok());
 
         // Check if the Neptune directory was removed
-        assert!(!neptune_dir.exists());
+        assert!(!neptune.app_path.exists());
 
         // Check if app.asar was restored
-        assert!(!app_asar.exists());
-        assert!(install_dir.path().join("app.asar").exists());
+        assert!(!neptune.orig_asar_path.exists());
+        assert!(neptune.app_asar_path.exists());
+
+        Ok(())
     }
 
     #[test]
-    fn test_uninstall_with_force() {
-        let install_dir = TempDir::new().unwrap();
+    fn test_uninstall_no_installation() -> Result<()> {
+        let neptune = NeptuneInstall::mock()?;
 
-        // Create a mock Neptune install dir structure
-        let neptune_dir = install_dir.path().join("app");
-        fs::create_dir(&neptune_dir).unwrap();
-
-        // Skip creating the app.asar file
-
-        let installer = Uninstaller {
-            install_path: install_dir.path().to_path_buf(),
-            force: true,
-        };
+        fs::create_dir(&neptune.app_path)?;
 
         // Should fail with a message about unable to restore original app.asar
-        assert!(installer.uninstall().is_err());
+        assert!(uninstall(&neptune, true).is_err());
 
-        // Check if the Neptune directory was removed
-        assert!(!neptune_dir.exists());
+        // Check if the Neptune app path was removed
+        assert!(!neptune.app_path.exists());
+
+        Ok(())
     }
 }
