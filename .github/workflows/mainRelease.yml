@@ -8,8 +8,8 @@ on:
   types: ["opened", "edited", "reopened", "synchronize", "ready_for_review", "review_requested"]
 
 jobs:
- Release:
-  name: Release - ${{ matrix.platform.os-name }}
+ Build:
+  name: Build & Test - ${{ matrix.platform.os-name }}
   strategy:
    matrix:
     platform:
@@ -39,34 +39,36 @@ jobs:
      with:
       key: "v2"
 
-   - name: Set "--features" flag value
-     id: set-features-flag-value
-     shell: bash
-     run: |
-      if [ -n "${{ matrix.platform.features }}" ]; then
-          echo "features=${{ matrix.platform.features }}" >> "$GITHUB_OUTPUT"
-      else 
-          echo "features=default" >> "$GITHUB_OUTPUT"
-      fi
-      cat "$GITHUB_OUTPUT"
-
    - name: Run tests
-     uses: houseabsolute/actions-rust-cross@v0
-     with:
-      command: "test"
-      target: ${{ matrix.platform.target }}
-      args: "--locked --release  --features ${{ steps.set-features-flag-value.outputs.features }}"
+     run: cargo test --locked --release --all-features --target ${{ matrix.platform.target }}
 
    - name: Build binary
-     uses: houseabsolute/actions-rust-cross@v0
-     with:
-      command: "build"
-      target: ${{ matrix.platform.target }}
-      args: "--locked --release --features ${{ steps.set-features-flag-value.outputs.features }}"
-      strip: true
+     run: cargo build --locked --release --all-features --target ${{ matrix.platform.target }}
 
-   - name: Publish artifacts and release
-     uses: houseabsolute/actions-rust-release@v0
+   - name: Upload Build Artifact
+     uses: actions/upload-artifact@v4
      with:
-      executable-name: neptunecli
-      target: ${{ matrix.platform.target }}
+      name: build-${{ matrix.runs-on }}
+      path: ./target/${{ matrix.platform.target }}/release/neptunectl
+
+ # Release to GitHub (runs after tests)
+ Release:
+  name: Release build on GitHub
+  needs: Build
+  runs-on: ubuntu-latest
+
+  steps:
+   - name: Download All Artifacts
+     uses: actions/download-artifact@v4
+     with:
+      path: ./target/
+      merge-multiple: true
+
+   - name: Publish dev release on GitHub
+     uses: marvinpinto/action-automatic-releases@latest
+     with:
+      repo_token: ${{ secrets.GITHUB_TOKEN }}
+      automatic_release_tag: latest
+      prerelease: true
+      title: Latest
+      files: target/*
