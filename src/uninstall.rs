@@ -1,5 +1,5 @@
 use anyhow::Result;
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 
 use crate::base::NeptuneInstall;
 
@@ -50,7 +50,7 @@ pub fn uninstall(neptune: &NeptuneInstall, force: bool) -> Result<()> {
     if neptune.orig_asar_path.exists() {
         std::fs::rename(&neptune.orig_asar_path, &neptune.app_asar_path)?;
     } else {
-        error!(
+        anyhow::bail!(
             "Unable to restore original app.asar! {} not found! You may need to reinstall Tidal...",
             neptune.orig_asar_path.display()
         );
