@@ -5,8 +5,10 @@ use tracing::{error, info, level_filters::LevelFilter};
 use tracing_subscriber::EnvFilter;
 
 mod helpers;
-mod install;
 mod progress;
+
+mod base;
+mod install;
 mod uninstall;
 
 /// A CLI tool to manage Neptune on your system
