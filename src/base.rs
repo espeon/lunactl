@@ -118,16 +118,12 @@ fn get_install_path() -> Result<PathBuf> {
     };
 
     #[cfg(target_os = "macos")]
-    return {
-        if tidal_directory.is_none() {
-            Ok(PathBuf::from("/Applications/TIDAL.app/Contents/Resources"));
-        } else {
-            Ok(PathBuf::from(format!(
-                "{}/Contents/Resources",
-                tidal_directory.display()
-            )));
+    return Ok(match tidal_directory {
+        Some(tidal_directory) => {
+            PathBuf::from(format!("{}/Contents/Resources", tidal_directory.display()))
         }
-    };
+        None => PathBuf::from("/Applications/TIDAL.app/Contents/Resources"),
+    });
 
     #[cfg(target_os = "windows")]
     return {
