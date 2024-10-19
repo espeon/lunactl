@@ -46,20 +46,6 @@ impl Installer {
 
     fn cleanup(&mut self) -> Result<()> {
         info!("cleaning up...");
-        if self.temp_dir.exists() {
-            match std::fs::remove_dir_all(&self.temp_dir) {
-                Ok(_) => {
-                    debug!("cleaned up temp dir");
-                }
-                Err(e) => {
-                    warn!(
-                        "Failed to remove temp dir at {} {}. You may want to clean it up manually.",
-                        self.temp_dir.display(),
-                        e
-                    );
-                }
-            }
-        }
         Ok(())
     }
 
