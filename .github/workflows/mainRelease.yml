@@ -41,12 +41,12 @@ jobs:
    - name: Build binary
      run: cargo build --locked --release --all-features
 
-   - name: Rename binary
-     run: mv ./target/release/neptunectl ./target/neptunectl-${{ matrix.platform.os-name }}
+   - name: Archive binary
+     run: tar -czf ./target/${{ matrix.platform.os-name }}.tar.gz -C ./target/release neptunectl
      if: matrix.platform.runs-on != 'windows-latest'
 
-   - name: Rename binary (windows)
-     run: mv ./target/release/neptunectl.exe ./target/neptunectl-${{ matrix.platform.os-name }}
+   - name: Archive binary (windows)
+     run: powershell -Command "Compress-Archive -Path './target/release/neptunectl.exe' -DestinationPath './target/${{ matrix.platform.os-name }}.zip'"
      if: matrix.platform.runs-on == 'windows-latest'
 
    - name: Upload Build Artifact
