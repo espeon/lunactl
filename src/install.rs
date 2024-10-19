@@ -15,14 +15,6 @@ pub struct Installer {
     force: bool,
 }
 
-impl Drop for Installer {
-    fn drop(&mut self) {
-        if let Err(e) = self.cleanup() {
-            error!("error during cleanup: {}", e);
-        }
-    }
-}
-
 impl Installer {
     pub fn new(opts: MainOpts) -> Result<Self> {
         let install_path = if let Some(install_path) = opts.install_path {
@@ -42,11 +34,6 @@ impl Installer {
             install_path,
             force: opts.force.unwrap_or(false),
         })
-    }
-
-    fn cleanup(&mut self) -> Result<()> {
-        info!("cleaning up...");
-        Ok(())
     }
 
     pub fn init(&mut self) -> Result<()> {
