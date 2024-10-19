@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use ripunzip::{UnzipEngine, UnzipOptions};
 use std::path::PathBuf;
-use tracing::{debug, warn};
+use tracing::{debug, info, warn};
 
 use crate::base::NeptuneInstall;
 use crate::progress::ProgressDisplayer;
@@ -28,32 +28,31 @@ fn download_and_extract(output_directory: &PathBuf) -> Result<()> {
 
     engine
         .unzip(opts)
-        .map_err(|e| anyhow::anyhow!("failed to unzip: {e}"))?;
+        .map_err(|e| anyhow::anyhow!("Failed to unzip: {e}"))?;
 
     Ok(())
 }
 
 pub fn install(install: &NeptuneInstall, force: bool) -> Result<()> {
-    debug!("using install path: {}", install.install_path.display());
+    debug!("Using install path: {}", install.install_path.display());
 
-    debug!(
-        "downloading & extracting Neptune to, {}",
+    info!(
+        "Downloading & extracting Neptune to {}",
         install.temp_path.display()
     );
-
     download_and_extract(&install.temp_path)?;
 
     let injector_path = install.temp_path.join("neptune-master/injector");
     if !injector_path.exists() {
         anyhow::bail!(
-            "Neptune injector not extracted to {}",
+            "Neptune injector failed to extract to {}",
             injector_path.display()
         );
     }
 
     if force {
-        warn!(
-            "removing old Neptune app directory {}!",
+        info!(
+            "Removing old Neptune app directory {}",
             install.app_path.display()
         );
         std::fs::remove_dir_all(&install.app_path)?;
@@ -66,14 +65,15 @@ pub fn install(install: &NeptuneInstall, force: bool) -> Result<()> {
 
     // check if original app.asar moved
     if !install.orig_asar_path.exists() {
-        debug!(
-            "moving {} to {}",
+        info!(
+            "Backing up {} to {}",
             install.orig_asar_path.display(),
             install.app_asar_path.display()
         );
         std::fs::rename(&install.app_asar_path, &install.orig_asar_path)?;
     }
 
+    info!("Installing neptune to {}", install.app_path.display());
     std::fs::rename(&injector_path, &install.app_path).with_context(|| {
         format!(
             "Failed to move injector from {} to {}",
@@ -81,6 +81,8 @@ pub fn install(install: &NeptuneInstall, force: bool) -> Result<()> {
             install.app_path.display()
         )
     })?;
+
+    info!("Neptune has been installed successfully.");
 
     Ok(())
 }

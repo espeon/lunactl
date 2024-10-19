@@ -15,11 +15,11 @@ pub struct NeptuneInstall {
 
 impl Drop for NeptuneInstall {
     fn drop(&mut self) {
-        debug!("cleanup removing temp_path: {}", self.temp_path.display());
+        debug!("Cleanup removing temp_path: {}", self.temp_path.display());
         fs::remove_dir_all(&self.temp_path).unwrap();
         if self.is_mock {
             debug!(
-                "cleanup mock removing install_path: {}",
+                "Cleanup mock removing install_path: {}",
                 self.install_path.display()
             );
             fs::remove_dir_all(&self.install_path).unwrap();
@@ -50,7 +50,8 @@ impl NeptuneInstall {
             is_mock: false,
         })
     }
-    // This is used in tests
+
+    #[cfg(test)]
     pub fn mock() -> Result<Self> {
         let install_path = TempDir::new()?.into_path();
         Ok(Self {

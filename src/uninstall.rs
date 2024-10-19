@@ -1,11 +1,9 @@
-use anyhow::{bail, Result};
-use tracing::{debug, error, info, warn};
+use anyhow::Result;
+use tracing::{error, info, warn};
 
 use crate::base::NeptuneInstall;
 
 pub fn uninstall(neptune: &NeptuneInstall, force: bool) -> Result<()> {
-    info!("uninstalling Neptune...");
-
     let app_exists = neptune.app_path.exists();
     let original_asar_exists = neptune.orig_asar_path.exists();
 
@@ -40,7 +38,7 @@ pub fn uninstall(neptune: &NeptuneInstall, force: bool) -> Result<()> {
 
     // Remove the injector directory
     if neptune.app_path.exists() {
-        debug!(
+        info!(
             "Removing Neptune app directory: {}",
             neptune.app_path.display()
         );
@@ -48,12 +46,14 @@ pub fn uninstall(neptune: &NeptuneInstall, force: bool) -> Result<()> {
     }
 
     // Restore the original app.asar
-    debug!("Restoring original app.asar");
+    info!("Restoring original app.asar");
     if neptune.orig_asar_path.exists() {
         std::fs::rename(&neptune.orig_asar_path, &neptune.app_asar_path)?;
     } else {
-        error!("original.asar not found. unable to restore original app.asar!");
-        bail!("Could not restore original app.asar, you may need to reinstall Tidal...");
+        error!(
+            "Unable to restore original app.asar! {} not found! You may need to reinstall Tidal...",
+            neptune.orig_asar_path.display()
+        );
     }
 
     info!("Neptune has been uninstalled successfully.");
