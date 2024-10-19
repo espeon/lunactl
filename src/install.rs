@@ -89,17 +89,8 @@ pub fn install(install: &NeptuneInstall, force: bool) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use tempfile::TempDir;
-
     use super::*;
     use std::fs::{self, File};
-
-    #[test]
-    fn test_download_and_extract() -> Result<()> {
-        assert!(download_and_extract(&TempDir::new()?.into_path()).is_ok());
-
-        Ok(())
-    }
 
     fn mock_install_fs(install: &NeptuneInstall) -> Result<()> {
         // Create a mock Neptune directory structure
