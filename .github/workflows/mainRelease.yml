@@ -13,10 +13,10 @@ jobs:
   strategy:
    matrix:
     platform:
-     - os-name: Linux-x86_64
+     - os-name: linux-x86_64
        runs-on: ubuntu-latest
 
-     - os-name: Windows-x86_64
+     - os-name: windows-x86_64
        runs-on: windows-latest
 
      - os-name: macOS-x86_64
@@ -41,19 +41,25 @@ jobs:
    - name: Build binary
      run: cargo build --locked --release --all-features
 
+   - name: Make artifacts output dir
+     run: mkdir ./artifacts
+
+   - name: Build documentation
+     run: cargo doc --locked --release --no-deps --all-features --document-private-items --open
+
    - name: Archive binary
-     run: tar -czf ./target/${{ matrix.platform.os-name }}.tar.gz -C ./target/release neptunectl
+     run: strip ./target/release/neptunectl && tar -czf ./artifacts/${{ matrix.platform.os-name }}.tar.gz -C ./target/release neptunectl
      if: matrix.platform.runs-on != 'windows-latest'
 
    - name: Archive binary (windows)
-     run: powershell -Command "Compress-Archive -Path './target/release/neptunectl.exe' -DestinationPath './target/${{ matrix.platform.os-name }}.zip'"
+     run: powershell -Command "Compress-Archive -Path './target/release/neptunectl.exe' -DestinationPath './artifacts/${{ matrix.platform.os-name }}.zip'"
      if: matrix.platform.runs-on == 'windows-latest'
 
    - name: Upload Build Artifact
      uses: actions/upload-artifact@v4
      with:
-      name: build-${{ matrix.platform.runs-on }}
-      path: ./target/neptunectl-${{ matrix.platform.os-name }}
+      name: ${{ matrix.platform.os-name }}
+      path: ./artifacts
 
  # Release to GitHub (runs after tests)
  Release:
