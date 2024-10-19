@@ -1,24 +1,12 @@
-# neptunectl (name tbd)
+# neptunectl
 
 A CLI tool to manage [Neptune](https://github.com/uwu/neptune) on your system. Not affiliated.
 
-> [!CAUTION]
-> This tool is still in development and may not work as expected.
-
 ## Installation
 
-### ~~Download a binary~~
+### Download a binary
 
-~~Download from GitHub Releases: [neptunectl](https://github.com/espeon/neptunectl/releases/)~~
-
-> [!INFO]
-> On MacOS, if you download neptunectl from the internet, you may need to run the following command to allow Neptune to be run:
->
-> ```bash
-> xattr -r -d com.apple.quarantine ./neptunectl
-> ```
->
-> See https://support.apple.com/en-us/102445 for more.
+Download from GitHub Releases: [neptunectl](https://github.com/espeon/neptunectl/releases/)
 
 ### Install via cargo
 
@@ -29,8 +17,8 @@ A CLI tool to manage [Neptune](https://github.com/uwu/neptune) on your system. N
 You'll need Rust and Cargo installed (ideally via rustup).
 
 1. Clone via `git clone https://github.com/espeon/neptunectl`
-2. Run `cargo build --release`
-3. Optionally install with `cargo install --path .`
+2. Run `cargo build --release --all-features`
+3. Optionally install with `cargo install --path --all-features .`
 
 ## License
 
