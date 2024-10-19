@@ -41,18 +41,35 @@ impl Uninstaller {
         let app_asar_path = join_path(&self.install_path, "app.asar");
         let original_asar_path = join_path(&self.install_path, "original.asar");
 
+        let app_exists = app_path.exists();
+        let original_asar_exists = original_asar_path.exists();
+
         // Check if Neptune is installed
-        if !app_path.exists() || !original_asar_path.exists() {
-            if self.force {
-                warn!("Neptune doesn't seem to be installed, but force flag is set. continuing...");
-            } else {
-                anyhow::bail!("Neptune doesn't seem to be installed. Use --force to override.");
+        if self.force {
+            if !app_exists {
+                warn!(
+                    "Neptune app path {:?} doesnt exist! Flag --force is set continuing...",
+                    app_path.display()
+                );
+            }
+            if !original_asar_exists {
+                warn!("Original Neptune app.asar file {:?} doesnt exist! --force is set continuing...", original_asar_path.display());
+            }
+        } else {
+            if !app_exists {
+                anyhow::bail!(
+                    "Neptune app path {:?} doesnt exist! Use --force to override.",
+                    app_path.display()
+                );
+            }
+            if !original_asar_exists {
+                anyhow::bail!("Original Neptune app.asar file {:?} doesnt exist! Use --force to override. !!WARNING!! this may require you to reinstall Tidal.", original_asar_path.display());
             }
         }
 
         // Remove the injector directory
-        debug!("Removing Neptune app directory: {}", app_path.display());
         if app_path.exists() {
+            debug!("Removing Neptune app directory: {}", app_path.display());
             std::fs::remove_dir_all(&app_path)?;
         }
 
@@ -62,7 +79,7 @@ impl Uninstaller {
             std::fs::rename(&original_asar_path, &app_asar_path)?;
         } else {
             error!("original.asar not found. unable to restore original app.asar!");
-            bail!("Could not restore original app.asar");
+            bail!("Could not restore original app.asar, you may need to reinstall Tidal...");
         }
 
         info!("Neptune has been uninstalled successfully.");
