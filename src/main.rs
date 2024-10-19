@@ -21,42 +21,24 @@ struct Args {
 #[derive(Subcommand, Clone, Debug)]
 enum Commands {
     #[clap(about = "Install Neptune from `master` branch")]
-    Install(InstallOpts),
+    Install(MainOpts),
     #[clap(about = "Uninstall Neptune")]
-    Uninstall(UninstallOpts),
+    Uninstall(MainOpts),
 }
 
-const INSTALL_PATH_HELP: &str = "The installation directory where app.asar or original.asar is found. Typically found in TIDAL\\app-x.xx.x\\resources";
-
 #[derive(Parser, Debug, Clone)]
-struct InstallOpts {
+struct MainOpts {
     #[clap(
         long,
-        default_value = "false",
-        help = "Force overwrite existing Neptune installation"
+        action = clap::ArgAction::SetTrue, // Sets `force` to Some(true) when provided
+        help = "Force regardless of if Neptune is installed/uninstalled"
     )]
     force: Option<bool>,
 
     #[clap(
         long,
         default_value = None,
-        help = INSTALL_PATH_HELP
-    )]
-    install_path: Option<PathBuf>,
-}
-
-#[derive(Parser, Debug, Clone)]
-struct UninstallOpts {
-    #[clap(
-        long,
-        default_value = "false",
-        help = "Force uninstall Neptune even if it is not installed"
-    )]
-    force: Option<bool>,
-    #[clap(
-        long,
-        default_value = None,
-        help = INSTALL_PATH_HELP
+        help = "The directory where app.asar or original.asar is found. Typically found in TIDAL\\app-x.xx.x\\resources"
     )]
     install_path: Option<PathBuf>,
 }

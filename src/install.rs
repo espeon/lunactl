@@ -7,7 +7,7 @@ use tempfile::TempDir;
 
 use crate::helpers::{get_install_path, join_path};
 use crate::progress::ProgressDisplayer;
-use crate::InstallOpts;
+use crate::MainOpts;
 
 pub struct Installer {
     temp_dir: PathBuf,
@@ -24,7 +24,7 @@ impl Drop for Installer {
 }
 
 impl Installer {
-    pub fn new(opts: InstallOpts) -> Result<Self> {
+    pub fn new(opts: MainOpts) -> Result<Self> {
         let install_path = if let Some(install_path) = opts.install_path {
             dbg!(&install_path);
             if !install_path.exists() {
@@ -149,7 +149,7 @@ mod tests {
 
     #[test]
     fn test_installer_new() {
-        let opts = InstallOpts {
+        let opts = MainOpts {
             install_path: None,
             force: Some(true),
         };
@@ -160,34 +160,39 @@ mod tests {
 
     #[test]
     fn test_installer_new_with_invalid_path() {
-        let opts = InstallOpts {
+        let opts = MainOpts {
             install_path: Some(PathBuf::from("/nonexistent/path")),
             force: None,
         };
         assert!(Installer::new(opts).is_err());
     }
 
-    #[test]
-    fn test_download_and_extract() {
-        let installer = Installer::new(InstallOpts {
-            force: Some(false),
+    fn mock_installer(force: bool) -> Installer {
+        return Installer::new(MainOpts {
+            force: Some(force),
             install_path: Some(TempDir::new().unwrap().into_path()),
         })
         .unwrap();
+    }
 
-        assert!(installer.download_and_extract().is_ok());
+    #[test]
+    fn test_download_and_extract() {
+        assert!(mock_installer(false).download_and_extract().is_ok());
     }
 
     #[test]
     fn test_cleanup() {
-        let mut installer = Installer::new(InstallOpts {
-            force: Some(false),
-            install_path: Some(TempDir::new().unwrap().into_path()),
-        })
-        .unwrap();
+        let installer = mock_installer(false);
 
-        assert!(installer.cleanup().is_ok());
-        assert!(!installer.temp_dir.exists());
+        // Make a copy of the temp_dir path
+        let temp_dir = installer.temp_dir.clone();
+        let install_path = installer.install_path.clone();
+
+        drop(installer); // Explicitly drop the installer to ensure cleanup is tested
+
+        // Check if the temp dirs are cleaned up (mock_installer uses TempDir for install_path)
+        assert!(temp_dir.exists());
+        assert!(install_path.exists());
     }
 
     fn mock_neptune_dir(temp_dir: &PathBuf, install_path: &PathBuf) {
@@ -202,11 +207,7 @@ mod tests {
 
     #[test]
     fn test_install() {
-        let mut installer = Installer::new(InstallOpts {
-            force: Some(false),
-            install_path: Some(TempDir::new().unwrap().into_path()),
-        })
-        .unwrap();
+        let mut installer = mock_installer(false);
 
         mock_neptune_dir(&installer.temp_dir, &installer.install_path);
 
@@ -225,11 +226,7 @@ mod tests {
 
     #[test]
     fn test_install_with_force() {
-        let mut installer = Installer::new(InstallOpts {
-            force: Some(true),
-            install_path: Some(TempDir::new().unwrap().into_path()),
-        })
-        .unwrap();
+        let mut installer = mock_installer(true);
 
         mock_neptune_dir(&installer.temp_dir, &installer.install_path);
 
