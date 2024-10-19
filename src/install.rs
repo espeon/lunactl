@@ -1,10 +1,11 @@
 use anyhow::Result;
-use ripunzip::{UnzipEngine, UnzipOptions, UnzipProgressReporter};
+use ripunzip::{UnzipEngine, UnzipOptions};
 use std::iter::repeat_with;
 use std::path::{Path, PathBuf};
 use tracing::{debug, error, info, warn};
 
-use crate::helpers::{get_install_path, join_path, ProgressDisplayer};
+use crate::helpers::{get_install_path, join_path};
+use crate::progress::ProgressDisplayer;
 use crate::InstallOpts;
 
 pub struct Installer {
@@ -62,15 +63,12 @@ impl Installer {
         )
         .map_err(|e| anyhow::anyhow!("Failed to create UnzipEngine: {e}"))?;
 
-        let progress_reporter: Box<dyn UnzipProgressReporter + Sync> =
-            Box::new(ProgressDisplayer::new());
-
         let opts: UnzipOptions = UnzipOptions {
             output_directory: Some(path.clone()),
             password: None,
             single_threaded: false,
             filename_filter: None,
-            progress_reporter,
+            progress_reporter: Box::new(ProgressDisplayer::new()),
         };
 
         engine
@@ -88,7 +86,11 @@ impl Installer {
                     debug!("cleaned up temp dir");
                 }
                 Err(e) => {
-                    warn!("Failed to remove temp dir at {} (os error {:?}). You may want to clean it up manually.", self.temp_dir.display(), e.raw_os_error().unwrap_or(0));
+                    warn!(
+                        "Failed to remove temp dir at {} {}. You may want to clean it up manually.",
+                        self.temp_dir.display(),
+                        e
+                    );
                 }
             }
         }

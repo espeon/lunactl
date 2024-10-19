@@ -1,6 +1,6 @@
 use anyhow::{bail, Result};
-use tracing::{debug, error, info, warn};
 use std::path::{Path, PathBuf};
+use tracing::{debug, error, info, warn};
 
 use crate::helpers::get_install_path;
 use crate::UninstallOpts;
@@ -50,9 +50,7 @@ impl Uninstaller {
         // Check if Neptune is installed
         if !app_path.exists() || !original_asar_path.exists() {
             if self.force {
-                warn!(
-                    "neptune doesn't seem to be installed, but force flag is set. continuing..."
-                );
+                warn!("neptune doesn't seem to be installed, but force flag is set. continuing...");
             } else {
                 anyhow::bail!("neptune doesn't seem to be installed. Use --force to override.");
             }
