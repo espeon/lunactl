@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use tracing::{debug, error, info, warn};
 
 use crate::helpers::get_install_path;
-use crate::UninstallOpts;
+use crate::MainOpts;
 
 pub struct Uninstaller {
     install_path: PathBuf,
@@ -11,7 +11,7 @@ pub struct Uninstaller {
 }
 
 impl Uninstaller {
-    pub fn new(opts: UninstallOpts) -> Result<Self> {
+    pub fn new(opts: MainOpts) -> Result<Self> {
         // check if paths exist
         let install_path = if let Some(install_path) = opts.install_path {
             if !install_path.exists() {
@@ -85,7 +85,7 @@ mod tests {
 
     #[test]
     fn test_uninstaller_new() {
-        let opts = UninstallOpts {
+        let opts = MainOpts {
             install_path: None,
             force: Some(true),
         };
@@ -96,7 +96,7 @@ mod tests {
 
     #[test]
     fn test_uninstaller_new_with_invalid_path() {
-        let opts = UninstallOpts {
+        let opts = MainOpts {
             install_path: Some(PathBuf::from("/nonexistent/path")),
             force: None,
         };

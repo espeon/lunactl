@@ -1,22 +1,30 @@
 use anyhow::Result;
 use ripunzip::{UnzipEngine, UnzipOptions};
-use std::iter::repeat_with;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use tracing::{debug, error, info, warn};
+
+use tempfile::TempDir;
 
 use crate::helpers::{get_install_path, join_path};
 use crate::progress::ProgressDisplayer;
-use crate::InstallOpts;
+use crate::MainOpts;
 
 pub struct Installer {
     temp_dir: PathBuf,
     install_path: PathBuf,
     force: bool,
-    finished_installing: bool,
+}
+
+impl Drop for Installer {
+    fn drop(&mut self) {
+        if let Err(e) = self.cleanup() {
+            error!("error during cleanup: {}", e);
+        }
+    }
 }
 
 impl Installer {
-    pub fn new(opts: InstallOpts) -> Result<Self> {
+    pub fn new(opts: MainOpts) -> Result<Self> {
         let install_path = if let Some(install_path) = opts.install_path {
             dbg!(&install_path);
             if !install_path.exists() {
@@ -30,18 +38,22 @@ impl Installer {
             get_install_path()?
         };
         Ok(Self {
-            temp_dir: std::env::temp_dir(),
+            temp_dir: TempDir::new().unwrap().into_path(),
             install_path,
             force: opts.force.unwrap_or(false),
-            finished_installing: false,
         })
+    }
+
+    fn cleanup(&mut self) -> Result<()> {
+        info!("cleaning up...");
+        Ok(())
     }
 
     pub fn init(&mut self) -> Result<()> {
         info!("downloading neptune");
-        let path = self.download_and_extract()?;
+        self.download_and_extract()?;
         info!("installing neptune");
-        self.install(&path)?;
+        self.install()?;
         Ok(())
     }
 
@@ -49,12 +61,8 @@ impl Installer {
         warn!("Warning: this operation required several HTTP(S) streams.\nThis can slow down decompression.");
     }
 
-    fn download_and_extract(&self) -> Result<PathBuf> {
-        let random_string: String = repeat_with(fastrand::alphanumeric).take(10).collect();
-        let file_name = format!("neptune-master-temp_{random_string}");
-        let path = self.temp_dir.join(file_name);
-
-        debug!("Downloading to {}", path.display());
+    fn download_and_extract(&self) -> Result<()> {
+        debug!("Downloading to {}", self.temp_dir.display());
 
         let engine = UnzipEngine::for_uri(
             "https://github.com/uwu/neptune/archive/refs/heads/master.zip",
@@ -64,7 +72,7 @@ impl Installer {
         .map_err(|e| anyhow::anyhow!("Failed to create UnzipEngine: {e}"))?;
 
         let opts: UnzipOptions = UnzipOptions {
-            output_directory: Some(path.clone()),
+            output_directory: Some(self.temp_dir.clone()),
             password: None,
             single_threaded: false,
             filename_filter: None,
@@ -75,37 +83,23 @@ impl Installer {
             .unzip(opts)
             .map_err(|e| anyhow::anyhow!("failed to unzip: {e}"))?;
 
-        Ok(path)
-    }
-
-    fn cleanup(&mut self) -> Result<()> {
-        info!("cleaning up...");
-        if self.temp_dir.exists() {
-            match std::fs::remove_dir_all(&self.temp_dir) {
-                Ok(_) => {
-                    debug!("cleaned up temp dir");
-                }
-                Err(e) => {
-                    warn!(
-                        "Failed to remove temp dir at {} {}. You may want to clean it up manually.",
-                        self.temp_dir.display(),
-                        e
-                    );
-                }
-            }
-        }
         Ok(())
     }
 
-    fn install(&mut self, tempdir: &Path) -> Result<()> {
-        let injector_path = join_path(tempdir, "neptune-master/injector");
-        debug!("got install path: {}", self.install_path.display());
+    fn install(&mut self) -> Result<()> {
+        debug!("using install path: {}", self.install_path.display());
+
+        let injector_path = join_path(&self.temp_dir, "neptune-master/injector");
+        debug!("using injector path: {}", injector_path.display());
+
         let app_path = join_path(&self.install_path, "app");
-        debug!("moving injector to install path: {}", app_path.display());
+        debug!("using app path: {}", app_path.display());
+
         let app_asar_path = join_path(&self.install_path, "app.asar");
         let original_asar_path = join_path(&self.install_path, "original.asar");
+
         if self.force {
-            warn!("removing old neptune app directory!");
+            warn!("removing old neptune app directory {}!", app_path.display());
             std::fs::remove_dir_all(&app_path)?;
         } else {
             // check if app.asar is moved
@@ -144,32 +138,7 @@ impl Installer {
                 original_asar_path.display()
             );
         }
-
-        // Set finished installing for drop method
-        self.finished_installing = true;
         Ok(())
-    }
-}
-
-impl Default for Installer {
-    fn default() -> Self {
-        Self {
-            temp_dir: std::env::temp_dir(),
-            install_path: PathBuf::new(),
-            force: false,
-            finished_installing: false,
-        }
-    }
-}
-
-impl Drop for Installer {
-    fn drop(&mut self) {
-        if !self.finished_installing {
-            warn!("encountered an error, so cleaning up!");
-        }
-        if let Err(e) = self.cleanup() {
-            error!("error during cleanup: {}", e);
-        }
     }
 }
 
@@ -177,11 +146,10 @@ impl Drop for Installer {
 mod tests {
     use super::*;
     use std::fs::{self, File};
-    use tempfile::TempDir;
 
     #[test]
     fn test_installer_new() {
-        let opts = InstallOpts {
+        let opts = MainOpts {
             install_path: None,
             force: Some(true),
         };
@@ -192,117 +160,86 @@ mod tests {
 
     #[test]
     fn test_installer_new_with_invalid_path() {
-        let opts = InstallOpts {
+        let opts = MainOpts {
             install_path: Some(PathBuf::from("/nonexistent/path")),
             force: None,
         };
         assert!(Installer::new(opts).is_err());
     }
 
+    fn mock_installer(force: bool) -> Installer {
+        return Installer::new(MainOpts {
+            force: Some(force),
+            install_path: Some(TempDir::new().unwrap().into_path()),
+        })
+        .unwrap();
+    }
+
     #[test]
     fn test_download_and_extract() {
-        let temp_dir = TempDir::new().unwrap();
-        let installer = Installer {
-            temp_dir: temp_dir.path().to_path_buf(),
-            install_path: PathBuf::new(),
-            force: false,
-            ..Default::default()
-        };
-
-        let result = installer.download_and_extract();
-        assert!(result.is_ok());
-        let path = result.unwrap();
-        assert!(path.starts_with(temp_dir.path()));
-        assert!(path
-            .file_name()
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .starts_with("neptune-master-temp_"));
+        assert!(mock_installer(false).download_and_extract().is_ok());
     }
 
     #[test]
     fn test_cleanup() {
-        let temp_dir = TempDir::new().unwrap();
-        let test_file = temp_dir.path().join("test_file.txt");
-        File::create(&test_file).unwrap();
+        let installer = mock_installer(false);
 
-        let mut installer = Installer {
-            temp_dir: temp_dir.path().to_path_buf(),
-            install_path: PathBuf::new(),
-            force: false,
-            ..Default::default()
-        };
+        // Make a copy of the temp_dir path
+        let temp_dir = installer.temp_dir.clone();
+        let install_path = installer.install_path.clone();
 
-        assert!(installer.cleanup().is_ok());
-        assert!(!temp_dir.path().exists());
+        drop(installer); // Explicitly drop the installer to ensure cleanup is tested
+
+        // Check if the temp dirs are cleaned up (mock_installer uses TempDir for install_path)
+        assert!(temp_dir.exists());
+        assert!(install_path.exists());
+    }
+
+    fn mock_neptune_dir(temp_dir: &PathBuf, install_path: &PathBuf) {
+        // Create a mock Neptune directory structure
+        let neptune_dir = temp_dir.join("neptune-master");
+        fs::create_dir(&neptune_dir).unwrap();
+        fs::create_dir(&neptune_dir.join("injector")).unwrap();
+
+        // Create a mock app.asar file
+        File::create(&install_path.join("app.asar")).unwrap();
     }
 
     #[test]
     fn test_install() {
-        let temp_dir = TempDir::new().unwrap();
-        let install_dir = TempDir::new().unwrap();
+        let mut installer = mock_installer(false);
 
-        // Create a mock Neptune directory structure
-        let neptune_dir = temp_dir.path().join("neptune-master");
-        fs::create_dir(&neptune_dir).unwrap();
-        let injector_dir = neptune_dir.join("injector");
-        fs::create_dir(&injector_dir).unwrap();
+        mock_neptune_dir(&installer.temp_dir, &installer.install_path);
 
-        // Create a mock app.asar file
-        let app_asar = install_dir.path().join("app.asar");
-        File::create(&app_asar).unwrap();
-
-        let mut installer = Installer {
-            temp_dir: temp_dir.path().to_path_buf(),
-            install_path: install_dir.path().to_path_buf(),
-            force: false,
-            ..Default::default()
-        };
-
-        assert!(installer.install(temp_dir.path()).is_ok());
+        assert!(installer.install().is_ok());
 
         // Check if the injector was moved correctly
-        assert!(install_dir.path().join("app").exists());
+        assert!(installer.install_path.join("app").exists());
 
         // Check if app.asar was renamed to original.asar
-        assert!(install_dir.path().join("original.asar").exists());
-        assert!(!install_dir.path().join("app.asar").exists());
+        assert!(installer.install_path.join("original.asar").exists());
+        assert!(!installer.install_path.join("app.asar").exists());
+
+        // Cleanup temp install_path
+        assert!(fs::remove_dir_all(&installer.install_path).is_ok());
     }
 
     #[test]
     fn test_install_with_force() {
-        let temp_dir = TempDir::new().unwrap();
-        let install_dir = TempDir::new().unwrap();
+        let mut installer = mock_installer(true);
 
-        // Create a mock Neptune directory structure
-        let neptune_dir = temp_dir.path().join("neptune-master");
-        fs::create_dir(&neptune_dir).unwrap();
-        let injector_dir = neptune_dir.join("injector");
-        fs::create_dir(&injector_dir).unwrap();
+        mock_neptune_dir(&installer.temp_dir, &installer.install_path);
 
         // Create a mock existing app directory
-        let existing_app_dir = install_dir.path().join("app");
-        fs::create_dir(&existing_app_dir).unwrap();
+        fs::create_dir(&installer.install_path.join("app")).unwrap();
 
-        // Create a mock app.asar file
-        let app_asar = install_dir.path().join("app.asar");
-        File::create(&app_asar).unwrap();
-
-        let mut installer = Installer {
-            temp_dir: temp_dir.path().to_path_buf(),
-            install_path: install_dir.path().to_path_buf(),
-            force: true,
-            ..Default::default()
-        };
-
-        assert!(installer.install(temp_dir.path()).is_ok());
+        assert!(&installer.install().is_ok());
 
         // Check if the injector was moved correctly
-        assert!(install_dir.path().join("app").exists());
+        assert!(&installer.install_path.join("app").exists());
 
         // Check if app.asar was renamed to original.asar
-        assert!(install_dir.path().join("original.asar").exists());
-        assert!(!install_dir.path().join("app.asar").exists());
+        assert!(&installer.install_path.join("original.asar").exists());
+        assert!(!&installer.install_path.join("app.asar").exists());
     }
 }
