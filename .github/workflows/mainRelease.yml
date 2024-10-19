@@ -12,8 +12,20 @@ jobs:
   name: Build & Test - ${{ matrix.platform.os-name }}
   strategy:
    matrix:
-    runs-on: [ubuntu-latest, windows-latest, macos-latest, macos-13]
-  runs-on: ${{ matrix.runs-on }}
+    platform:
+     - os-name: Linux-x86_64
+       runs-on: ubuntu-latest
+
+     - os-name: Windows-x86_64
+       runs-on: windows-latest
+
+     - os-name: macOS-x86_64
+       runs-on: macOS-13
+
+     - os-name: macOS-aarch64
+       runs-on: macOS-latest
+
+  runs-on: ${{ matrix.platform.runs-on }}
 
   steps:
    - uses: actions/checkout@v4
@@ -29,11 +41,19 @@ jobs:
    - name: Build binary
      run: cargo build --locked --release --all-features
 
+   - name: Rename binary
+     run: mv ./target/release/neptunectl ./target/neptunectl-${{ matrix.platform.os-name }}
+     if: matrix.platform.runs-on != 'windows-latest'
+
+   - name: Rename binary (windows)
+     run: mv ./target/release/neptunectl.exe ./target/neptunectl-${{ matrix.platform.os-name }}
+     if: matrix.platform.runs-on == 'windows-latest'
+
    - name: Upload Build Artifact
      uses: actions/upload-artifact@v4
      with:
-      name: build-${{ matrix.runs-on }}
-      path: ./target/release/neptunectl
+      name: build-${{ matrix.platform.runs-on }}
+      path: ./target/neptunectl-${{ matrix.platform.os-name }}
 
  # Release to GitHub (runs after tests)
  Release:
@@ -45,7 +65,7 @@ jobs:
    - name: Download All Artifacts
      uses: actions/download-artifact@v4
      with:
-      path: ./target/
+      path: ./target
       merge-multiple: true
 
    - name: Publish dev release on GitHub
