@@ -118,24 +118,19 @@ fn get_install_path() -> Result<PathBuf> {
     };
 
     #[cfg(target_os = "macos")]
-    if tidal_directory.is_none() {
-        Ok(PathBuf::from("/Applications/TIDAL.app/Contents/Resources"));
-    } else {
-        Ok(PathBuf::from(format!(
-            "{}/Contents/Resources",
-            tidal_directory.display()
-        )));
-    }
+    return {
+        if tidal_directory.is_none() {
+            Ok(PathBuf::from("/Applications/TIDAL.app/Contents/Resources"));
+        } else {
+            Ok(PathBuf::from(format!(
+                "{}/Contents/Resources",
+                tidal_directory.display()
+            )));
+        }
+    };
 
-    if tidal_directory.is_none() {
-        #[cfg(target_os = "linux")]
-        bail!("Linux hardcoded tidal paths arent defined. Please specify your Tidal installation path and consider opening a issue on GitHub.");
-        bail!("OS not supported! Please specify your Tidal installation path and consider opening a issue on GitHub.");
-    }
-
-    // on windows, it's localappdata/TIDAL
     #[cfg(target_os = "windows")]
-    return Ok({
+    return {
         let install_dir = match tidal_directory {
             Some(tidal_directory) => tidal_directory,
             None => match env::var("localappdata") {
@@ -157,8 +152,14 @@ fn get_install_path() -> Result<PathBuf> {
             }
         };
 
-        install_dir.join(latest_app_dir).join("resources")
-    });
+        Ok(install_dir.join(latest_app_dir).join("resources"))
+    };
+
+    #[cfg(target_os = "linux")]
+    bail!("Linux not supported! Please specify your Tidal installation path (location of app.asar) and consider opening a issue on GitHub.");
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+    bail!("OS not supported! Please specify your Tidal installation path (location of app.asar) and consider opening a issue on GitHub.");
 }
 
 #[cfg(test)]
