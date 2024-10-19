@@ -1,8 +1,8 @@
 use anyhow::{bail, Result};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use tracing::{debug, error, info, warn};
 
-use crate::helpers::get_install_path;
+use crate::helpers::{get_install_path, join_path};
 use crate::MainOpts;
 
 pub struct Uninstaller {
@@ -36,16 +36,10 @@ impl Uninstaller {
         Ok(())
     }
 
-    fn join_path<P: AsRef<Path>>(&self, base: P, component: &str) -> PathBuf {
-        let mut path = base.as_ref().to_path_buf();
-        path.push(component);
-        path
-    }
-
     fn uninstall(&self) -> Result<()> {
-        let app_path = self.join_path(&self.install_path, "app");
-        let app_asar_path = self.join_path(&self.install_path, "app.asar");
-        let original_asar_path = self.join_path(&self.install_path, "original.asar");
+        let app_path = join_path(&self.install_path, "app");
+        let app_asar_path = join_path(&self.install_path, "app.asar");
+        let original_asar_path = join_path(&self.install_path, "original.asar");
 
         // Check if Neptune is installed
         if !app_path.exists() || !original_asar_path.exists() {
