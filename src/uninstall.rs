@@ -31,7 +31,7 @@ impl Uninstaller {
     }
 
     pub fn init(&self) -> Result<()> {
-        info!("uninstalling neptune...");
+        info!("uninstalling Neptune...");
         self.uninstall()?;
         Ok(())
     }
@@ -44,9 +44,9 @@ impl Uninstaller {
         // Check if Neptune is installed
         if !app_path.exists() || !original_asar_path.exists() {
             if self.force {
-                warn!("neptune doesn't seem to be installed, but force flag is set. continuing...");
+                warn!("Neptune doesn't seem to be installed, but force flag is set. continuing...");
             } else {
-                anyhow::bail!("neptune doesn't seem to be installed. Use --force to override.");
+                anyhow::bail!("Neptune doesn't seem to be installed. Use --force to override.");
             }
         }
 
@@ -65,7 +65,7 @@ impl Uninstaller {
             bail!("Could not restore original app.asar");
         }
 
-        info!("neptune has been uninstalled successfully.");
+        info!("Neptune has been uninstalled successfully.");
 
         Ok(())
     }

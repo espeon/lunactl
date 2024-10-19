@@ -37,9 +37,9 @@ impl Installer {
     }
 
     pub fn init(&mut self) -> Result<()> {
-        info!("downloading neptune");
+        info!("downloading Neptune");
         self.download_and_extract()?;
-        info!("installing neptune");
+        info!("installing Neptune");
         self.install()?;
         Ok(())
     }
@@ -86,7 +86,7 @@ impl Installer {
         let original_asar_path = join_path(&self.install_path, "original.asar");
 
         if self.force {
-            warn!("removing old neptune app directory {}!", app_path.display());
+            warn!("removing old Neptune app directory {}!", app_path.display());
             std::fs::remove_dir_all(&app_path)?;
         } else {
             // check if app.asar is moved
@@ -105,7 +105,7 @@ impl Installer {
             }
             // Check if Neptune is already installed
             if app_path.exists() {
-                anyhow::bail!("neptune is already installed. Use --force to override.");
+                anyhow::bail!("Neptune is already installed. Use --force to override.");
             }
         }
 
