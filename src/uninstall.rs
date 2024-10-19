@@ -11,13 +11,13 @@ pub fn uninstall(neptune: &NeptuneInstall, force: bool) -> Result<()> {
     if force {
         if !app_exists {
             warn!(
-                "Neptune app path {:?} doesnt exist! Flag --force is set continuing...",
+                "Neptune app path {:?} doesnt exist!",
                 neptune.app_path.display()
             );
         }
         if !original_asar_exists {
             warn!(
-                "Original Neptune app.asar file {:?} doesnt exist! --force is set continuing...",
+                "Original Neptune app.asar file {:?} doesnt exist!",
                 neptune.orig_asar_path.display()
             );
         }

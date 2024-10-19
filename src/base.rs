@@ -53,6 +53,10 @@ impl NeptuneInstall {
         })
     }
 
+    pub fn installed(&self) -> bool {
+        self.orig_asar_path.exists() && self.app_path.exists()
+    }
+
     #[cfg(test)]
     pub fn mock() -> Result<Self> {
         let install_path = TempDir::new()?.into_path();

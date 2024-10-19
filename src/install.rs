@@ -36,6 +36,29 @@ fn download_and_extract(output_directory: &PathBuf) -> Result<()> {
 pub fn install(install: &NeptuneInstall, force: bool) -> Result<()> {
     debug!("Using install path: {}", install.install_path.display());
 
+    // Check if Neptune is already installed
+    if install.app_path.exists() {
+        if force {
+            info!(
+                "Removing old Neptune app folder {}",
+                install.app_path.display()
+            );
+            std::fs::remove_dir_all(&install.app_path)?;
+        } else {
+            anyhow::bail!("Neptune app folder already exists. Use --force to override.");
+        }
+    }
+
+    // check if original app.asar moved
+    if !install.orig_asar_path.exists() {
+        info!(
+            "Backing up {} to {}",
+            install.orig_asar_path.display(),
+            install.app_asar_path.display()
+        );
+        std::fs::rename(&install.app_asar_path, &install.orig_asar_path)?;
+    }
+
     info!(
         "Downloading & extracting Neptune to {}",
         install.temp_path.display()
@@ -48,29 +71,6 @@ pub fn install(install: &NeptuneInstall, force: bool) -> Result<()> {
             "Neptune injector failed to extract to {}",
             injector_path.display()
         );
-    }
-
-    if force {
-        info!(
-            "Removing old Neptune app directory {}",
-            install.app_path.display()
-        );
-        std::fs::remove_dir_all(&install.app_path)?;
-    } else {
-        // Check if Neptune is already installed
-        if install.app_path.exists() {
-            anyhow::bail!("Neptune is already installed. Use --force to override.");
-        }
-    }
-
-    // check if original app.asar moved
-    if !install.orig_asar_path.exists() {
-        info!(
-            "Backing up {} to {}",
-            install.orig_asar_path.display(),
-            install.app_asar_path.display()
-        );
-        std::fs::rename(&install.app_asar_path, &install.orig_asar_path)?;
     }
 
     info!("Installing neptune to {}", install.app_path.display());
