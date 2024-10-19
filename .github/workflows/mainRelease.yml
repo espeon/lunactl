@@ -8,9 +8,8 @@ on:
   types: ["opened", "edited", "reopened", "synchronize", "ready_for_review", "review_requested"]
 
 jobs:
- # Binary Build & Test (depends on eslint)
- Sanity:
-  name: Build & Test
+ Release:
+  name: Release - ${{ matrix.platform.os-name }}
   strategy:
    matrix:
     platform:
@@ -56,7 +55,6 @@ jobs:
      with:
       command: "test"
       target: ${{ matrix.platform.target }}
-      toolchain: ${{ matrix.toolchain }}
       args: "--locked --release  --features ${{ steps.set-features-flag-value.outputs.features }}"
 
    - name: Build binary
@@ -64,7 +62,6 @@ jobs:
      with:
       command: "build"
       target: ${{ matrix.platform.target }}
-      toolchain: ${{ matrix.toolchain }}
       args: "--locked --release --features ${{ steps.set-features-flag-value.outputs.features }}"
       strip: true
 
