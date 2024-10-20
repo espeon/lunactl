@@ -1,84 +1,86 @@
 name: "[main] Test, Build & Release"
 
 on:
- push:
-  branches:
-   - "main"
- pull_request:
-  types: ["opened", "edited", "reopened", "synchronize", "ready_for_review", "review_requested"]
+  push:
+    branches:
+      - "main"
+  pull_request:
+    types: ["ready_for_review", "review_requested"]
 
 jobs:
- Build:
-  name: Build & Test - ${{ matrix.platform.os-name }}
-  strategy:
-   matrix:
-    platform:
-     - os-name: linux-x86_64
-       runs-on: ubuntu-latest
+  Build:
+    name: Build & Test - ${{ matrix.platform.os-name }}
+    strategy:
+      matrix:
+        platform:
+          - os-name: linux-x86_64
+            runs-on: ubuntu-latest
 
-     - os-name: windows-x86_64
-       runs-on: windows-latest
+          - os-name: windows-x86_64
+            runs-on: windows-latest
 
-     - os-name: macOS-x86_64
-       runs-on: macOS-13
+          - os-name: macOS-x86_64
+            runs-on: macOS-13
 
-     - os-name: macOS-aarch64
-       runs-on: macOS-latest
+          - os-name: macOS-aarch64
+            runs-on: macOS-latest
 
-  runs-on: ${{ matrix.platform.runs-on }}
+    runs-on: ${{ matrix.platform.runs-on }}
 
-  steps:
-   - uses: actions/checkout@v4
+    steps:
+      - uses: actions/checkout@v4
 
-   - name: Cache cargo & target directories
-     uses: Swatinem/rust-cache@v2
-     with:
-      key: "v2"
+      - name: Cache cargo & target directories
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
 
-   - name: Run tests
-     run: cargo test --locked --release --all-features
+      - name: Run tests
+        run: cargo test --locked --release --all-features
 
-   - name: Build binary
-     run: cargo build --locked --release --all-features
+      - name: Build binary
+        run: cargo build --locked --release --all-features
 
-   - name: Make artifacts output dir
-     run: mkdir ./artifacts
+      - name: Make artifacts output dir
+        run: mkdir ./artifacts
 
-   - name: Build documentation
-     run: cargo doc --locked --release --no-deps --all-features --document-private-items --open
+      #- name: Build documentation
+      #  run: cargo doc --locked --release --no-deps --all-features --document-private-items
 
-   - name: Archive binary
-     run: strip ./target/release/neptunectl && tar -czf ./artifacts/${{ matrix.platform.os-name }}.tar.gz -C ./target/release neptunectl
-     if: matrix.platform.runs-on != 'windows-latest'
+      - name: Archive binary
+        run: strip ./target/release/neptunectl && tar -czf ./artifacts/${{ matrix.platform.os-name }}.tar.gz -C ./target/release neptunectl
+        if: matrix.platform.runs-on != 'windows-latest'
 
-   - name: Archive binary (windows)
-     run: powershell -Command "Compress-Archive -Path './target/release/neptunectl.exe' -DestinationPath './artifacts/${{ matrix.platform.os-name }}.zip'"
-     if: matrix.platform.runs-on == 'windows-latest'
+      - name: Archive binary (windows)
+        run: powershell -Command "Compress-Archive -Path './target/release/neptunectl.exe' -DestinationPath './artifacts/${{ matrix.platform.os-name }}.zip'"
+        if: matrix.platform.runs-on == 'windows-latest'
 
-   - name: Upload Build Artifact
-     uses: actions/upload-artifact@v4
-     with:
-      name: ${{ matrix.platform.os-name }}
-      path: ./artifacts
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform.os-name }}
+          path: ./artifacts
 
- # Release to GitHub (runs after tests)
- Release:
-  name: Release build on GitHub
-  needs: Build
-  runs-on: ubuntu-latest
+  # Release to GitHub (runs after tests)
+  Release:
+    name: Release build on GitHub
+    needs: Build
+    runs-on: ubuntu-latest
 
-  steps:
-   - name: Download All Artifacts
-     uses: actions/download-artifact@v4
-     with:
-      path: ./target
-      merge-multiple: true
+    steps:
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./target
+          merge-multiple: true
 
-   - name: Publish dev release on GitHub
-     uses: marvinpinto/action-automatic-releases@latest
-     with:
-      repo_token: ${{ secrets.GITHUB_TOKEN }}
-      automatic_release_tag: latest
-      prerelease: false
-      title: Latest
-      files: target/*
+      - name: Upload artifacts to release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          # all the gh actions files: linux-x86_64.zip, macOS-aarch64.zip, macOS-x86_64.zip, windows-x86_64.zip
+          files: |
+            linux-x86_64.tar.gz
+            macOS-aarch64.tar.gz
+            macOS-x86_64.tar.gz
+            windows-x86_64.zip
