@@ -11,26 +11,26 @@ pub fn uninstall(neptune: &NeptuneInstall, force: bool) -> Result<()> {
     if force {
         if !app_exists {
             warn!(
-                "Neptune app path {:?} doesnt exist!",
+                "Neptune app path {:?} doesn't exist!",
                 neptune.app_path.display()
             );
         }
         if !original_asar_exists {
             warn!(
-                "Original Neptune app.asar file {:?} doesnt exist!",
+                "Original Neptune app.asar file {:?} doesn't exist!",
                 neptune.orig_asar_path.display()
             );
         }
     } else {
         if !app_exists {
             anyhow::bail!(
-                "Neptune app path {:?} doesnt exist! Use --force to override.",
+                "Neptune app path {:?} doesn't exist! Use --force to override.",
                 neptune.app_path.display()
             );
         }
         if !original_asar_exists {
             anyhow::bail!(
-                "Original Neptune app.asar file {:?} doesnt exist! Use --force to override. !!WARNING!! this may require you to reinstall Tidal.", 
+                "Original Neptune app.asar file {:?} doesn't exist! Use --force to override. !!WARNING!! This may require you to reinstall Tidal.", 
                 neptune.orig_asar_path.display()
             );
         }
@@ -51,7 +51,7 @@ pub fn uninstall(neptune: &NeptuneInstall, force: bool) -> Result<()> {
         std::fs::rename(&neptune.orig_asar_path, &neptune.app_asar_path)?;
     } else {
         anyhow::bail!(
-            "Unable to restore original app.asar! {} not found! You may need to reinstall Tidal...",
+            "Unable to restore original app.asar: {} not found! You may need to reinstall Tidal!",
             neptune.orig_asar_path.display()
         );
     }
