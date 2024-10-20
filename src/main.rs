@@ -1,9 +1,12 @@
+use std::io::{self, Write};
 use std::path::PathBuf;
 
 use base::NeptuneInstall;
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser};
 use tracing::{error, info, level_filters::LevelFilter};
 use tracing_subscriber::EnvFilter;
+
+use anyhow::Result;
 
 mod progress;
 
@@ -15,15 +18,15 @@ use crate::install::install;
 use crate::uninstall::uninstall;
 
 /// A CLI tool to manage Neptune on your system
-#[derive(Parser, Debug)]
+#[derive(clap::Parser)]
 #[command(version, about, long_about = None)]
-struct Args {
+struct Cli {
     /// subcommand for install/uninstall
     #[command(subcommand)]
-    command: Commands,
+    command: Option<Commands>,
 }
 
-#[derive(Subcommand, Clone, Debug)]
+#[derive(clap::Subcommand)]
 enum Commands {
     #[clap(about = "Install Neptune from `master` branch")]
     Install(MainOpts),
@@ -31,7 +34,7 @@ enum Commands {
     Uninstall(MainOpts),
 }
 
-#[derive(Parser, Debug, Clone)]
+#[derive(clap::Args)]
 struct MainOpts {
     #[clap(
         long,
@@ -65,18 +68,59 @@ fn main() {
     }
 }
 
-fn run() -> anyhow::Result<()> {
-    let args = Args::parse();
+fn anykey() -> Result<()> {
+    io::stdout().flush().expect("Failed to flush stdout");
+
+    // Wait for the user to press Enter
+    let mut input = String::new();
+    io::stdin()
+        .read_line(&mut input)
+        .expect("Failed to read line");
+
+    Ok(())
+}
+
+fn run() -> Result<()> {
+    let cli = Cli::parse();
 
     #[cfg(target_os = "windows")]
     {
-        info!("If you have a fresh install of TIDAL, you may need to wait for Defender to finish scanning the app files.");
+        info!("Fresh TIDAL installs may need to wait for Defender to finish scanning.");
     }
 
-    match args.command {
-        Commands::Install(opts) => install(&NeptuneInstall::new(opts.install_path)?, opts.force),
-        Commands::Uninstall(opts) => {
-            uninstall(&NeptuneInstall::new(opts.install_path)?, opts.force)
+    match &cli.command {
+        Some(Commands::Install(opts)) => {
+            install(&NeptuneInstall::new(opts.install_path.clone())?, opts.force)
+        }
+        Some(Commands::Uninstall(opts)) => {
+            uninstall(&NeptuneInstall::new(opts.install_path.clone())?, opts.force)
+        }
+        None => {
+            Cli::command().print_help()?;
+            println!("\nNo commands specified! Using defaults...");
+
+            let neptune = NeptuneInstall::new(None)?;
+            let installed = neptune.installed();
+            let action_text = if installed { "uninstall" } else { "install" };
+            println!(
+                "Press Enter to {} Neptune. Press Ctrl+C to exit.",
+                action_text
+            );
+            anykey()?;
+
+            if installed {
+                uninstall(&neptune, false)?
+            } else {
+                install(&neptune, false)?
+            }
+
+            println!(
+                "\nNeptune {}ed successfully! Press Enter to exit.",
+                action_text
+            );
+            anykey()?;
+
+            Ok(())
         }
     }?;
 

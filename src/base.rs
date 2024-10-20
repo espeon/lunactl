@@ -53,6 +53,10 @@ impl NeptuneInstall {
         })
     }
 
+    pub fn installed(&self) -> bool {
+        self.orig_asar_path.exists() && self.app_path.exists()
+    }
+
     #[cfg(test)]
     pub fn mock() -> Result<Self> {
         let install_path = TempDir::new()?.into_path();
@@ -106,7 +110,13 @@ fn get_install_path() -> Result<PathBuf> {
     let tidal_directory: Option<PathBuf> = match which("tidal") {
         Ok(path) => {
             info!("Found Tidal binary at: {:?}", path);
-            path.parent().map(|p| p.to_path_buf())
+            match path.parent() {
+                Some(parent) => Some(parent.to_path_buf()),
+                None => bail!(
+                    "Tidal binary path is invalid, cannot find parent folder! {}",
+                    path.display()
+                ),
+            }
         }
         Err(e) => {
             warn!(
@@ -152,7 +162,12 @@ fn get_install_path() -> Result<PathBuf> {
     };
 
     #[cfg(target_os = "linux")]
-    bail!("Linux not supported! Please specify your Tidal installation path (location of app.asar) and consider opening a issue on GitHub.");
+    return Ok(match tidal_directory {
+        Some(tidal_directory) => PathBuf::from(format!("{}/resources", tidal_directory.display())),
+        None => {
+            bail!("Cannot find Tidal directory");
+        }
+    });
 
     #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
     bail!("OS not supported! Please specify your Tidal installation path (location of app.asar) and consider opening a issue on GitHub.");
