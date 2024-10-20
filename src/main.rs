@@ -71,9 +71,6 @@ fn run() -> anyhow::Result<()> {
     #[cfg(target_os = "windows")]
     {
         info!("If you have a fresh install of TIDAL, you may need to wait for Defender to finish scanning the app files.");
-        info!(
-            "After scanning finishes, you can force install by running `neptune install --force`"
-        );
     }
 
     match args.command {
