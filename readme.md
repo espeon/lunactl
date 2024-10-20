@@ -12,13 +12,20 @@ Download from GitHub Releases: [neptunectl](https://github.com/espeon/neptunectl
 
 `cargo install --git https://github.com/espeon/neptunectl`
 
+> [!IMPORTANT]
+> On macOS, if you download **neptunectl** from the internet, you may need to run the following command to allow it to run:
+> ```bash
+> xattr -d com.apple.quarantine ./neptunectl
+> ```
+> For more details, visit the [Apple Support KB entry](https://support.apple.com/en-us/102445).
+
 ### Build manually
 
 You'll need Rust and Cargo installed (ideally via rustup).
 
 1. Clone via `git clone https://github.com/espeon/neptunectl`
-2. Run `cargo build --release --all-features`
-3. Optionally install with `cargo install --path --all-features .`
+2. Run `cargo build --release`
+3. Optionally install with `cargo install --path .`
 
 ## License
 

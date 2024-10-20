@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use ripunzip::{UnzipEngine, UnzipOptions};
-use std::path::PathBuf;
+use std::path::Path;
 use tracing::{debug, info, warn};
 
 use crate::base::NeptuneInstall;
@@ -10,7 +10,7 @@ fn report_on_insufficient_readahead_size() {
     warn!("Warning: this operation required several HTTP(S) streams.\nThis can slow down decompression.");
 }
 
-fn download_and_extract(output_directory: &PathBuf) -> Result<()> {
+fn download_and_extract(output_directory: &Path) -> Result<()> {
     let engine = UnzipEngine::for_uri(
         "https://github.com/uwu/neptune/archive/refs/heads/master.zip",
         None,
@@ -19,7 +19,7 @@ fn download_and_extract(output_directory: &PathBuf) -> Result<()> {
     .map_err(|e| anyhow::anyhow!("Failed to create UnzipEngine: {e}"))?;
 
     let opts: UnzipOptions = UnzipOptions {
-        output_directory: Some(output_directory.clone()),
+        output_directory: Some(output_directory.to_path_buf()),
         password: None,
         single_threaded: false,
         filename_filter: None,

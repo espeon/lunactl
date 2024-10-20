@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use base::NeptuneInstall;
 use clap::{CommandFactory, Parser};
-use tracing::{error, info, level_filters::LevelFilter};
+use tracing::{error, level_filters::LevelFilter};
 use tracing_subscriber::EnvFilter;
 
 use anyhow::Result;
