@@ -1,5 +1,5 @@
 use anyhow::{bail, Result};
-use std::{env, fs, path::PathBuf};
+use std::{fs, path::PathBuf};
 use tracing::{debug, info, warn};
 
 use tempfile::TempDir;
@@ -71,6 +71,8 @@ impl NeptuneInstall {
     }
 }
 
+// this fn is used on windows branch!
+#[allow(dead_code)]
 fn find_latest_version(tidal_directory: &PathBuf) -> Result<Option<PathBuf>> {
     let mut current_parsed_version = 0;
     let mut current_app_dir: Option<PathBuf> = None;
