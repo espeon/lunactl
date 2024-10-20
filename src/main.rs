@@ -3,6 +3,8 @@ use std::path::PathBuf;
 
 use base::NeptuneInstall;
 use clap::{CommandFactory, Parser};
+#[cfg(target_os = "windows")]
+use tracing::info;
 use tracing::{error, level_filters::LevelFilter};
 use tracing_subscriber::EnvFilter;
 

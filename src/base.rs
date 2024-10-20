@@ -1,4 +1,6 @@
 use anyhow::{bail, Result};
+#[cfg(target_os = "windows")]
+use std::env;
 use std::{fs, path::PathBuf};
 use tracing::{debug, info, warn};
 
