@@ -50,11 +50,11 @@ jobs:
       #  run: cargo doc --locked --release --no-deps --all-features --document-private-items
 
       - name: Archive binary
-        run: strip ./target/release/neptunectl && tar -czf ./artifacts/${{ matrix.platform.os-name }}.tar.gz -C ./target/release neptunectl
+        run: strip ./target/release/lunactl && tar -czf ./artifacts/${{ matrix.platform.os-name }}.tar.gz -C ./target/release lunactl
         if: matrix.platform.runs-on != 'windows-latest'
 
       - name: Archive binary (windows)
-        run: powershell -Command "Compress-Archive -Path './target/release/neptunectl.exe' -DestinationPath './artifacts/${{ matrix.platform.os-name }}.zip'"
+        run: powershell -Command "Compress-Archive -Path './target/release/lunactl.exe' -DestinationPath './artifacts/${{ matrix.platform.os-name }}.zip'"
         if: matrix.platform.runs-on == 'windows-latest'
 
       - name: Upload Build Artifact
