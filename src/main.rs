@@ -1,7 +1,7 @@
 use std::io::{self, Write};
 use std::path::PathBuf;
 
-use base::NeptuneInstall;
+use base::LunaInstall;
 use clap::{CommandFactory, Parser};
 #[cfg(target_os = "windows")]
 use tracing::info;
@@ -19,7 +19,7 @@ mod uninstall;
 use crate::install::install;
 use crate::uninstall::uninstall;
 
-/// A CLI tool to manage Neptune on your system
+/// A CLI tool to manage Luna on your system
 #[derive(clap::Parser)]
 #[command(version, about, long_about = None)]
 struct Cli {
@@ -30,9 +30,9 @@ struct Cli {
 
 #[derive(clap::Subcommand)]
 enum Commands {
-    #[clap(about = "Install Neptune from `master` branch")]
+    #[clap(about = "Install Luna from `master` branch")]
     Install(MainOpts),
-    #[clap(about = "Uninstall Neptune")]
+    #[clap(about = "Uninstall Luna")]
     Uninstall(MainOpts),
 }
 
@@ -41,7 +41,7 @@ struct MainOpts {
     #[clap(
         long,
         action = clap::ArgAction::SetTrue, // Sets `force` to Some(true) when provided
-        help = "Force regardless of if Neptune is installed/uninstalled"
+        help = "Force regardless of if Luna is installed/uninstalled"
     )]
     force: bool,
 
@@ -92,32 +92,32 @@ fn run() -> Result<()> {
 
     match &cli.command {
         Some(Commands::Install(opts)) => {
-            install(&NeptuneInstall::new(opts.install_path.clone())?, opts.force)
+            install(&LunaInstall::new(opts.install_path.clone())?, opts.force)
         }
         Some(Commands::Uninstall(opts)) => {
-            uninstall(&NeptuneInstall::new(opts.install_path.clone())?, opts.force)
+            uninstall(&LunaInstall::new(opts.install_path.clone())?, opts.force)
         }
         None => {
             Cli::command().print_help()?;
             println!("\nNo commands specified! Using defaults...");
 
-            let neptune = NeptuneInstall::new(None)?;
-            let installed = neptune.installed();
+            let luna = LunaInstall::new(None)?;
+            let installed = luna.installed();
             let action_text = if installed { "uninstall" } else { "install" };
             println!(
-                "Press Enter to {} Neptune. Press Ctrl+C to exit.",
+                "Press Enter to {} TidaLuna. Press Ctrl+C to exit.",
                 action_text
             );
             anykey()?;
 
             if installed {
-                uninstall(&neptune, false)?
+                uninstall(&luna, false)?
             } else {
-                install(&neptune, false)?
+                install(&luna, false)?
             }
 
             println!(
-                "\nNeptune {}ed successfully! Press Enter to exit.",
+                "\nTidaLuna {}ed successfully! Press Enter to exit.",
                 action_text
             );
             anykey()?;

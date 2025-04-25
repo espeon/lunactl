@@ -2,12 +2,12 @@ use anyhow::{bail, Result};
 #[cfg(target_os = "windows")]
 use std::env;
 use std::{fs, path::PathBuf};
-use tracing::{debug, info, warn};
+use tracing::{debug, error, info, warn};
 
 use tempfile::TempDir;
 use which::which;
 
-pub struct NeptuneInstall {
+pub struct LunaInstall {
     pub temp_path: PathBuf,
     pub install_path: PathBuf,
     pub app_path: PathBuf,
@@ -16,21 +16,27 @@ pub struct NeptuneInstall {
     is_mock: bool,
 }
 
-impl Drop for NeptuneInstall {
+impl Drop for LunaInstall {
+    // it's okay if they aren't cleaned up, the OS can do it later
+    // it's about being a good citizen. and the principle :)
     fn drop(&mut self) {
         debug!("Cleanup removing temp_path: {}", self.temp_path.display());
-        fs::remove_dir_all(&self.temp_path).unwrap();
+        if let Err(e) = fs::remove_dir_all(&self.temp_path) {
+            error!("Failed to remove temp_path: {}", e);
+        }
         if self.is_mock {
             debug!(
                 "Cleanup mock removing install_path: {}",
                 self.install_path.display()
             );
-            fs::remove_dir_all(&self.install_path).unwrap();
+            if let Err(e) = fs::remove_dir_all(&self.install_path) {
+                error!("Failed to remove install_path when testing: {}", e);
+            }
         }
     }
 }
 
-impl NeptuneInstall {
+impl LunaInstall {
     pub fn new(install_path: Option<PathBuf>) -> Result<Self> {
         let install_path = if let Some(install_path) = install_path {
             dbg!(&install_path);
@@ -79,8 +85,6 @@ fn find_latest_version(tidal_directory: &PathBuf) -> Result<Option<PathBuf>> {
     let mut current_parsed_version = 0;
     let mut current_app_dir: Option<PathBuf> = None;
 
-    // From original neptune installer
-    // https://github.com/uwu/neptune-installer/blob/61763c8143d7c00cc17f24e7e730b04ea679306a/src/neptune_installer.nim#L24-L37
     if let Ok(entries) = fs::read_dir(tidal_directory) {
         for entry in entries.filter_map(Result::ok) {
             let path = entry.path();
@@ -182,28 +186,28 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_neptune_install_new() -> Result<()> {
-        let neptune = NeptuneInstall::mock()?;
-        assert!(neptune.install_path.exists());
-        assert!(neptune.temp_path.exists());
+    fn test_luna_install_new() -> Result<()> {
+        let luna = LunaInstall::mock()?;
+        assert!(luna.install_path.exists());
+        assert!(luna.temp_path.exists());
         Ok(())
     }
 
     #[test]
-    fn test_neptune_install_invalid_path() {
-        assert!(NeptuneInstall::new(Some(PathBuf::from("/nonexistent/path"))).is_err());
+    fn test_luna_install_invalid_path() {
+        assert!(LunaInstall::new(Some(PathBuf::from("/nonexistent/path"))).is_err());
     }
 
     #[test]
-    fn test_neptune_install_cleanup() -> Result<()> {
-        let neptune = NeptuneInstall::mock()?;
+    fn test_luna_install_cleanup() -> Result<()> {
+        let luna = LunaInstall::mock()?;
 
         // Make a copy of the temp_dir path
-        let temp_dir = neptune.temp_path.clone();
-        let install_path = neptune.install_path.clone();
+        let temp_dir = luna.temp_path.clone();
+        let install_path = luna.install_path.clone();
 
         // Explicitly drop the temp paths to ensure cleanup is tested
-        drop(neptune);
+        drop(luna);
 
         // Check if the temp dirs are cleaned up (mock uses TempDir for install_path)
         assert!(!temp_dir.exists());

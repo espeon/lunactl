@@ -3,7 +3,7 @@ use ripunzip::{UnzipEngine, UnzipOptions};
 use std::path::Path;
 use tracing::{debug, info, warn};
 
-use crate::base::NeptuneInstall;
+use crate::base::LunaInstall;
 use crate::progress::ProgressDisplayer;
 
 fn report_on_insufficient_readahead_size() {
@@ -12,7 +12,7 @@ fn report_on_insufficient_readahead_size() {
 
 fn download_and_extract(output_directory: &Path) -> Result<()> {
     let engine = UnzipEngine::for_uri(
-        "https://github.com/uwu/neptune/archive/refs/heads/master.zip",
+        "https://github.com/Inrixia/TidaLuna/releases/download/latest/luna.zip",
         None,
         report_on_insufficient_readahead_size,
     )
@@ -33,19 +33,19 @@ fn download_and_extract(output_directory: &Path) -> Result<()> {
     Ok(())
 }
 
-pub fn install(install: &NeptuneInstall, force: bool) -> Result<()> {
+pub fn install(install: &LunaInstall, force: bool) -> Result<()> {
     debug!("Using install path: {}", install.install_path.display());
 
-    // Check if Neptune is already installed
+    // Check if luna is already installed
     if install.app_path.exists() {
         if force {
             info!(
-                "Removing old Neptune app folder {}",
+                "Removing old luna app folder {}",
                 install.app_path.display()
             );
             std::fs::remove_dir_all(&install.app_path)?;
         } else {
-            anyhow::bail!("Neptune app folder already exists. Use --force to override.");
+            anyhow::bail!("luna app folder already exists. Use --force to override.");
         }
     }
 
@@ -60,29 +60,27 @@ pub fn install(install: &NeptuneInstall, force: bool) -> Result<()> {
     }
 
     info!(
-        "Downloading & extracting Neptune to {}",
+        "Downloading & extracting luna to {}",
         install.temp_path.display()
     );
     download_and_extract(&install.temp_path)?;
-
-    let injector_path = install.temp_path.join("neptune-master/injector");
-    if !injector_path.exists() {
+    if !install.temp_path.exists() {
         anyhow::bail!(
-            "Neptune injector failed to extract to {}",
-            injector_path.display()
+            "luna injector failed to extract to {}",
+            install.temp_path.display()
         );
     }
 
-    info!("Installing neptune to {}", install.app_path.display());
-    std::fs::rename(&injector_path, &install.app_path).with_context(|| {
+    info!("Installing luna to {}", install.app_path.display());
+    std::fs::rename(&install.temp_path, &install.app_path).with_context(|| {
         format!(
             "Failed to move injector from {} to {}",
-            injector_path.display(),
+            install.temp_path.display(),
             install.app_path.display()
         )
     })?;
 
-    info!("Neptune has been installed successfully.");
+    info!("luna has been installed successfully.");
 
     Ok(())
 }
@@ -92,11 +90,10 @@ mod tests {
     use super::*;
     use std::fs::{self, File};
 
-    fn mock_install_fs(install: &NeptuneInstall) -> Result<()> {
-        // Create a mock Neptune directory structure
-        let neptune_download_dir = install.temp_path.join("neptune-master");
-        fs::create_dir(&neptune_download_dir)?;
-        fs::create_dir(neptune_download_dir.join("injector"))?;
+    fn mock_install_fs(install: &LunaInstall) -> Result<()> {
+        // Create a mock luna directory structure
+        let luna_download_dir = install.temp_path.join("app");
+        fs::create_dir(&luna_download_dir)?;
 
         // Create a mock app.asar file
         File::create(install.install_path.join("app.asar"))?;
@@ -104,42 +101,42 @@ mod tests {
         Ok(())
     }
 
-    fn assert_install_success(neptune: &NeptuneInstall) -> Result<()> {
+    fn assert_install_success(luna: &LunaInstall) -> Result<()> {
         // Check if the injector was moved correctly
-        assert!(neptune.install_path.join("app").exists());
+        assert!(luna.install_path.join("app").exists());
 
         // Check if app.asar was renamed to original.asar
-        assert!(neptune.install_path.join("original.asar").exists());
-        assert!(!neptune.install_path.join("app.asar").exists());
+        assert!(luna.install_path.join("original.asar").exists());
+        assert!(!luna.install_path.join("app.asar").exists());
 
         Ok(())
     }
 
     #[test]
     fn test_install() -> Result<()> {
-        let neptune = NeptuneInstall::mock()?;
+        let luna = LunaInstall::mock()?;
 
-        mock_install_fs(&neptune)?;
+        mock_install_fs(&luna)?;
 
-        assert!(install(&neptune, false).is_ok());
+        assert!(install(&luna, false).is_ok());
 
-        assert_install_success(&neptune)?;
+        assert_install_success(&luna)?;
 
         Ok(())
     }
 
     #[test]
     fn test_install_with_force() -> Result<()> {
-        let neptune = NeptuneInstall::mock()?;
+        let luna = LunaInstall::mock()?;
 
-        mock_install_fs(&neptune)?;
+        mock_install_fs(&luna)?;
 
         // Create a mock existing app directory
-        fs::create_dir(&neptune.app_path)?;
+        fs::create_dir(&luna.app_path)?;
 
-        assert!(install(&neptune, true).is_ok());
+        assert!(install(&luna, true).is_ok());
 
-        assert_install_success(&neptune)?;
+        assert_install_success(&luna)?;
 
         Ok(())
     }

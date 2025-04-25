@@ -1,10 +1,10 @@
 [package]
-name = "neptunectl"
+name = "lunactl"
 version = "0.1.0"
 edition = "2021"
 
 [[bin]]
-name = "neptunectl"
+name = "lunactl"
 path = "src/main.rs"
 
 [dependencies]
