@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use ripunzip::{UnzipEngine, UnzipOptions};
+use serde::{Deserialize, Serialize};
 use std::path::Path;
 use tracing::{debug, info, warn};
 
@@ -10,13 +11,49 @@ fn report_on_insufficient_readahead_size() {
     warn!("Warning: this operation required several HTTP(S) streams.\nThis can slow down decompression.");
 }
 
+#[derive(Serialize, Deserialize)]
+struct GithubRelease {
+    tag_name: String,
+    prerelease: bool,
+    draft: bool,
+    assets: Vec<GithubAsset>,
+}
+#[derive(Serialize, Deserialize)]
+struct GithubAsset {
+    name: String,
+    browser_download_url: String,
+}
+
+// Returns 'version, browser_download_url'
+fn get_latest_release(get_prerelease: bool) -> Result<(String, String)> {
+    let client = reqwest::blocking::Client::new();
+    info!("Fetching release metadata");
+    let response = client
+        .get("https://api.github.com/repos/Inrixia/TidaLuna/releases")
+        .header("user-agent", "neptunectl-beta")
+        .send()?;
+    info!("Fetched release metadata, decoding response body");
+    let release = response.json::<Vec<GithubRelease>>()?;
+    info!("Parsing release metadata");
+    for release in release {
+        if release.prerelease == get_prerelease {
+            for asset in release.assets {
+                if asset.name.contains("luna.zip") {
+                    return Ok((release.tag_name, asset.browser_download_url));
+                }
+            }
+        }
+    }
+    Err(anyhow::anyhow!(
+        "Failed to find luna.zip in latest releases"
+    ))
+}
+
 fn download_and_extract(output_directory: &Path) -> Result<()> {
-    let engine = UnzipEngine::for_uri(
-        "https://github.com/Inrixia/TidaLuna/releases/download/latest/luna.zip",
-        None,
-        report_on_insufficient_readahead_size,
-    )
-    .map_err(|e| anyhow::anyhow!("Failed to create UnzipEngine: {e}"))?;
+    // get latest release
+    let (version, url) = get_latest_release(false)?;
+    let engine = UnzipEngine::for_uri(&url, None, report_on_insufficient_readahead_size)
+        .map_err(|e| anyhow::anyhow!("Failed to create UnzipEngine: {e}"))?;
 
     let opts: UnzipOptions = UnzipOptions {
         output_directory: Some(output_directory.to_path_buf()),
@@ -25,6 +62,8 @@ fn download_and_extract(output_directory: &Path) -> Result<()> {
         filename_filter: None,
         progress_reporter: Box::new(ProgressDisplayer::new()),
     };
+
+    info!("Downloading luna version {} ({})", version, url);
 
     engine
         .unzip(opts)
